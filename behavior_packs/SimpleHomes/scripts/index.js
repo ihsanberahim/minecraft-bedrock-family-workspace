@@ -33,13 +33,15 @@ function showMainMenu(player) {
         if (response.canceled) return;
         
         const selection = response.selection;
-        if (selection === 0) {
-            showTeleportMenu(player);
-        } else if (selection === 1) {
-            showSetHomeMenu(player);
-        } else if (selection === 2) {
-            showDeleteMenu(player);
-        }
+        system.run(() => {
+            if (selection === 0) {
+                showTeleportMenu(player);
+            } else if (selection === 1) {
+                showSetHomeMenu(player);
+            } else if (selection === 2) {
+                showDeleteMenu(player);
+            }
+        });
     }).catch((err) => {
         console.error("Error showing main menu: ", err);
     });
@@ -60,7 +62,7 @@ function showTeleportMenu(player) {
 
     for (const name of homeNames) {
         const h = homes[name];
-        const dimFriendly = h.dimension.replace('minecraft:', '');
+        const dimFriendly = (h.dimension ?? "").replace('minecraft:', '') || 'overworld';
         form.button(`🏠 ${name}\n(${dimFriendly})`);
     }
 
@@ -95,7 +97,15 @@ function showSetHomeMenu(player) {
     form.show(player).then((response) => {
         if (response.canceled) return;
 
-        const homeName = response.formValues[0].trim() || 'home';
+        let homeName = response.formValues[0].trim().substring(0, 16) || 'home';
+        
+        // Prevent JS prototype pollution keywords
+        const reservedKeywords = ["__proto__", "constructor", "prototype", "toString", "valueOf"];
+        if (reservedKeywords.includes(homeName.toLowerCase())) {
+            player.sendMessage("§cError: Invalid home name. Please use a different name.");
+            return;
+        }
+
         const location = player.location;
         const dimension = player.dimension.id;
         const homes = getHomes(player);
