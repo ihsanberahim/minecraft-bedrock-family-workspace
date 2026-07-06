@@ -208,6 +208,164 @@ async function runTests() {
         throw new Error(`Expected alert to fire again after memory cleanup, got ${mockState.messagesSent.length}`);
     }
 
+    // ----------------------------------------------------
+    // Test Case 7: Warning Tracking Dynamic Properties
+    // ----------------------------------------------------
+    console.log("Test Case 7: Warning tracking sets player dynamic properties...");
+    // Let's trigger memory bounding cleanup to clear firedAlerts by setting time to July 7, then July 8, etc.
+    // Or we can just use a new date (July 8) so firedAlerts doesn't have any matching keys.
+    mockState.reset();
+    const trackingPlayer = addMockPlayer("TrackerSteve");
+    setMockTime("2026-07-08T08:14:00Z"); // 16:14 UTC+8 on July 8
+    callback();
+
+    const rawProp = trackingPlayer.getDynamicProperty("solat_tracking");
+    if (!rawProp) {
+        throw new Error("Expected solat_tracking property to be set on player");
+    }
+    const parsedProp = JSON.parse(rawProp);
+    if (parsedProp.prayer !== "Asr" || !parsedProp.alerts.includes(30)) {
+        throw new Error(`Invalid solat_tracking property contents: ${rawProp}`);
+    }
+    console.log("solat_tracking contents after 30m alert:", rawProp);
+
+    // Run 10m warning
+    setMockTime("2026-07-08T08:34:00Z");
+    callback();
+    const rawProp2 = trackingPlayer.getDynamicProperty("solat_tracking");
+    const parsedProp2 = JSON.parse(rawProp2);
+    if (!parsedProp2.alerts.includes(30) || !parsedProp2.alerts.includes(10)) {
+        throw new Error(`Expected both 30m and 10m alerts in tracking: ${rawProp2}`);
+    }
+
+    // Run 5m warning
+    setMockTime("2026-07-08T08:39:00Z");
+    callback();
+    const rawProp3 = trackingPlayer.getDynamicProperty("solat_tracking");
+    const parsedProp3 = JSON.parse(rawProp3);
+    if (!parsedProp3.alerts.includes(30) || !parsedProp3.alerts.includes(10) || !parsedProp3.alerts.includes(5)) {
+        throw new Error(`Expected 30m, 10m, and 5m alerts in tracking: ${rawProp3}`);
+    }
+
+    // ----------------------------------------------------
+    // Test Case 8: Leave Hook Sets Logout Time
+    // ----------------------------------------------------
+    console.log("Test Case 8: Leave hook sets logout timestamp...");
+    if (typeof mockState.playerLeaveSubscribe !== 'function') {
+        throw new Error("Leave hook was not subscribed correctly");
+    }
+    const leaveTime = 1772872440000; // Mock logout time
+    setMockTime(new Date(leaveTime).toISOString());
+    
+    const leaveEvent = { player: trackingPlayer };
+    mockState.playerLeaveSubscribe(leaveEvent);
+
+    const logoutTimeVal = trackingPlayer.getDynamicProperty('solat_logout_time');
+    if (logoutTimeVal !== leaveTime.toString()) {
+        throw new Error(`Expected logout time property to be '${leaveTime}', got '${logoutTimeVal}'`);
+    }
+
+    // ----------------------------------------------------
+    // Test Case 9: Spawn/Login Hook Eligibility & Reward (Eligible Case)
+    // ----------------------------------------------------
+    console.log("Test Case 9: Eligible player spawn awards bottles & clears tracking...");
+    if (typeof mockState.playerSpawnSubscribe !== 'function') {
+        throw new Error("Spawn hook was not subscribed correctly");
+    }
+
+    // Pre-requisites for eligible player:
+    // 1. received warnings (30, 10, 5) -> set in Test Case 7 parsedProp3
+    // 2. logged out within 10 minutes of start -> start is 16:44 local (08:44 UTC) = 1772873040000 ms.
+    // Let's verify start timestamp in parsedProp3.startTime
+    const startTimeVal = parsedProp3.startTime;
+    console.log("Prayer start time from tracking:", new Date(startTimeVal).toISOString());
+
+    // Set logout time to 5 minutes after start (which is <= 10 mins after start, so within 10 min window)
+    const mockLogoutTime = startTimeVal + (5 * 60 * 1000);
+    trackingPlayer.setDynamicProperty('solat_logout_time', mockLogoutTime.toString());
+
+    // Set login/spawn time to 15 minutes after start (which is >= 10 mins after start)
+    const mockLoginTime = startTimeVal + (15 * 60 * 1000);
+    setMockTime(new Date(mockLoginTime).toISOString());
+
+    // Trigger Spawn
+    mockState.addedItems = []; // reset added items check
+    const spawnEvent = { player: trackingPlayer, initialSpawn: true };
+    mockState.playerSpawnSubscribe(spawnEvent);
+
+    if (mockState.addedItems.length !== 1) {
+        throw new Error(`Expected 1 item added to player inventory, got ${mockState.addedItems.length}`);
+    }
+    const rewardedItem = mockState.addedItems[0].itemStack;
+    if (rewardedItem.typeId !== 'minecraft:experience_bottle' || rewardedItem.amount !== 10) {
+        throw new Error(`Invalid reward given: type=${rewardedItem.typeId}, amount=${rewardedItem.amount}`);
+    }
+
+    // Dynamic property for tracking must be cleared
+    const clearedTracking = trackingPlayer.getDynamicProperty('solat_tracking');
+    if (clearedTracking !== undefined) {
+        throw new Error("Expected solat_tracking property to be cleared after reward check");
+    }
+
+    // ----------------------------------------------------
+    // Test Case 10: Spawn/Login Hook Ineligibility (Not all warnings received)
+    // ----------------------------------------------------
+    console.log("Test Case 10: Ineligible player (missing warnings) spawn does not award bottles...");
+    const badTrackingPlayer = addMockPlayer("BadSteve");
+    // Missing alert 5
+    const badTrackingData = { prayer: "Asr", date: "2026-07-06", alerts: [30, 10], startTime: startTimeVal };
+    badTrackingPlayer.setDynamicProperty('solat_tracking', JSON.stringify(badTrackingData));
+    badTrackingPlayer.setDynamicProperty('solat_logout_time', mockLogoutTime.toString());
+
+    mockState.addedItems = [];
+    mockState.playerSpawnSubscribe({ player: badTrackingPlayer, initialSpawn: true });
+    if (mockState.addedItems.length !== 0) {
+        throw new Error("Ineligible player (missing alerts) received rewards");
+    }
+    // Dynamic property for tracking must STILL be cleared (per step 3: "Clear tracking to avoid duplicate rewards" at the end of the spawn handler)
+    if (badTrackingPlayer.getDynamicProperty('solat_tracking') !== undefined) {
+        throw new Error("Expected solat_tracking to be cleared even for ineligible player to prevent rerun");
+    }
+
+    // ----------------------------------------------------
+    // Test Case 11: Spawn/Login Hook Ineligibility (Logged out too late)
+    // ----------------------------------------------------
+    console.log("Test Case 11: Ineligible player (logged out too late) spawn does not award bottles...");
+    const lateLogoutPlayer = addMockPlayer("LateSteve");
+    lateLogoutPlayer.setDynamicProperty('solat_tracking', JSON.stringify({ prayer: "Asr", date: "2026-07-06", alerts: [30, 10, 5], startTime: startTimeVal }));
+    // Logout 11 minutes after start (> 10 mins window)
+    const lateLogoutTime = startTimeVal + (11 * 60 * 1000);
+    lateLogoutPlayer.setDynamicProperty('solat_logout_time', lateLogoutTime.toString());
+
+    mockState.addedItems = [];
+    mockState.playerSpawnSubscribe({ player: lateLogoutPlayer, initialSpawn: true });
+    if (mockState.addedItems.length !== 0) {
+        throw new Error("Ineligible player (logged out too late) received rewards");
+    }
+    if (lateLogoutPlayer.getDynamicProperty('solat_tracking') !== undefined) {
+        throw new Error("Expected solat_tracking to be cleared");
+    }
+
+    // ----------------------------------------------------
+    // Test Case 12: Spawn/Login Hook Ineligibility (Logged back in too early)
+    // ----------------------------------------------------
+    console.log("Test Case 12: Ineligible player (logged back in too early) spawn does not award bottles...");
+    const earlyLoginPlayer = addMockPlayer("EarlySteve");
+    earlyLoginPlayer.setDynamicProperty('solat_tracking', JSON.stringify({ prayer: "Asr", date: "2026-07-06", alerts: [30, 10, 5], startTime: startTimeVal }));
+    earlyLoginPlayer.setDynamicProperty('solat_logout_time', mockLogoutTime.toString());
+    // Log back in 9 minutes after start (< 10 mins window)
+    const earlyLoginTime = startTimeVal + (9 * 60 * 1000);
+    setMockTime(new Date(earlyLoginTime).toISOString());
+
+    mockState.addedItems = [];
+    mockState.playerSpawnSubscribe({ player: earlyLoginPlayer, initialSpawn: true });
+    if (mockState.addedItems.length !== 0) {
+        throw new Error("Ineligible player (logged back in too early) received rewards");
+    }
+    if (earlyLoginPlayer.getDynamicProperty('solat_tracking') !== undefined) {
+        throw new Error("Expected solat_tracking to be cleared");
+    }
+
     restoreDate();
     console.log("PASS: All index.js alerts and ticking logic tests succeeded!");
 }
