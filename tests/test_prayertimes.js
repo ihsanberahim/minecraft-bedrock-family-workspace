@@ -19,18 +19,11 @@ function runTests() {
     console.log(`Maghrib: ${formatTime(times.maghrib)}`);
     console.log(`Isha: ${formatTime(times.isha)}`);
 
-    // Verify Dhuhr is around 13:10 to 13:25
-    if (times.dhuhr < 13.1 || times.dhuhr > 13.4) {
-        throw new Error("FAIL: Dhuhr time is outside reasonable range.");
-    }
-    // Verify Asr is around 16:30 to 16:55
-    if (times.asr < 16.5 || times.asr > 16.9) {
-        throw new Error("FAIL: Asr time is outside reasonable range.");
-    }
-    // Verify Maghrib is around 19:15 to 19:35
-    if (times.maghrib < 19.2 || times.maghrib > 19.6) {
-        throw new Error("FAIL: Maghrib time is outside reasonable range.");
-    }
+    if (formatTime(times.fajr) !== "05:54") throw new Error("Fajr incorrect");
+    if (formatTime(times.dhuhr) !== "13:17") throw new Error("Dhuhr incorrect");
+    if (formatTime(times.asr) !== "16:44") throw new Error("Asr incorrect");
+    if (formatTime(times.maghrib) !== "19:28") throw new Error("Maghrib incorrect");
+    if (formatTime(times.isha) !== "20:43") throw new Error("Isha incorrect");
     
     // Test formatTime edge cases
     console.log("Testing formatTime...");

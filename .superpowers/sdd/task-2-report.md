@@ -31,3 +31,15 @@
 
 ## Issues or concerns
 - None.
+
+## Code Review Fixes (2026-07-06)
+- **Host-timezone/DST dependencies**: Replaced local Date methods in `getLocalDecimalHours` and `getLocalDateString` with UTC-based methods (`getUTCHours()`, `getUTCMinutes()`, `getUTCSeconds()`, `getUTCFullYear()`, `getUTCMonth()`, `getUTCDate()`) to guarantee consistent time calculations regardless of the host machine's system timezone and DST rules.
+- **Poles Divide-by-zero check**: Added a safety boundary check in `getHourAngle` to confirm if `cos(latitude) * cos(declination)` is near zero (`< 1e-9`), returning `null` in such cases to avoid poles calculation NaN errors.
+- **Tightened test assertions**: Updated `tests/test_prayertimes.js` to assert the exact expected formatted times for July 6, 2026:
+  - Fajr: `"05:54"`
+  - Dhuhr: `"13:17"`
+  - Asr: `"16:44"`
+  - Maghrib: `"19:28"`
+  - Isha: `"20:43"`
+  Implemented explicit strict equality assertions for all of these.
+- **Verification**: Ran `node E:\minecraft-bedrock-server-local\tests\test_prayertimes.js` and confirmed all assertions successfully pass.
