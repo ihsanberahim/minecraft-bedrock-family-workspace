@@ -60,7 +60,7 @@ async function runTests() {
     }
     const msg1 = mockState.messagesSent[0].message;
     console.log("Received chat message:", msg1);
-    if (!msg1.includes("30 minutes remaining") || !msg1.includes("Asr") || !msg1.includes("16:44")) {
+    if (!msg1.includes("in 30m") || !msg1.includes("Asr") || !msg1.includes("16:44")) {
         throw new Error(`Invalid chat message for 30m warning: ${msg1}`);
     }
 
@@ -86,7 +86,7 @@ async function runTests() {
         throw new Error(`Expected 1 chat message, got ${mockState.messagesSent.length}`);
     }
     const msg2 = mockState.messagesSent[0].message;
-    if (!msg2.includes("10 minutes remaining") || !msg2.includes("Asr")) {
+    if (!msg2.includes("in 10m") || !msg2.includes("Asr")) {
         throw new Error(`Invalid chat message for 10m warning: ${msg2}`);
     }
 
@@ -103,7 +103,7 @@ async function runTests() {
         throw new Error(`Expected 1 chat message, got ${mockState.messagesSent.length}`);
     }
     const msg3 = mockState.messagesSent[0].message;
-    if (!msg3.includes("5 minutes remaining") || !msg3.includes("Asr")) {
+    if (!msg3.includes("in 5m") || !msg3.includes("Asr")) {
         throw new Error(`Invalid chat message for 5m warning: ${msg3}`);
     }
 

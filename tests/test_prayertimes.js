@@ -1,4 +1,4 @@
-import { calculatePrayerTimes, formatTime, getLocalDecimalHours, getLocalDateString } from '../behavior_packs/SolatAlerts/scripts/prayertimes.js';
+import { calculatePrayerTimes, formatTime, getLocalDecimalHours, getLocalDateString, getPrayerTimestamp } from '../behavior_packs/SolatAlerts/scripts/prayertimes.js';
 
 // Coordinates for Kuala Lumpur
 const LAT = 3.1390;
@@ -62,6 +62,21 @@ function runTests() {
     const dateStrTZMinus5 = getLocalDateString(dateNearMidnight, -5);
     if (dateStrTZMinus5 !== "2026-07-06") {
         throw new Error(`FAIL: getLocalDateString (TZ=-5) should be 2026-07-06, got ${dateStrTZMinus5}`);
+    }
+
+    // Test getPrayerTimestamp
+    console.log("Testing getPrayerTimestamp...");
+    if (getPrayerTimestamp(new Date(), null, 8) !== null) throw new Error("FAIL: null decimalHours should return null");
+    if (getPrayerTimestamp(new Date(), NaN, 8) !== null) throw new Error("FAIL: NaN decimalHours should return null");
+    
+    // July 6, 2026 Asr is 16:44 local (which is 16 + 44/60 = 16.733333 hours decimal)
+    // Timezone is +8.
+    // UTC time should be 08:44:00Z on July 6, 2026.
+    const dateForTimestamp = new Date(Date.UTC(2026, 6, 6, 12, 0, 0)); // July 6, 2026 12:00:00 UTC
+    const ts = getPrayerTimestamp(dateForTimestamp, 16.733333333333334, 8);
+    const expectedUTC = Date.UTC(2026, 6, 6, 8, 44, 0); // 08:44:00 UTC
+    if (Math.abs(ts - expectedUTC) > 1000) {
+        throw new Error(`FAIL: getPrayerTimestamp returned ${new Date(ts).toISOString()}, expected ${new Date(expectedUTC).toISOString()}`);
     }
 
     console.log("PASS: All sanity checks succeeded!");

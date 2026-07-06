@@ -80,3 +80,14 @@ export function getLocalDateString(date, timezone) {
     const d = String(localDate.getUTCDate()).padStart(2, '0');
     return `${y}-${m}-${d}`;
 }
+
+export function getPrayerTimestamp(date, decimalHours, timezone) {
+    if (decimalHours === null || isNaN(decimalHours)) return null;
+    const localTimeMs = date.getTime() + (timezone * 60 * 60 * 1000);
+    const localDate = new Date(localTimeMs);
+    const y = localDate.getUTCFullYear();
+    const m = localDate.getUTCMonth();
+    const d = localDate.getUTCDate();
+    const localDayStartUTC = Date.UTC(y, m, d);
+    return localDayStartUTC + (decimalHours * 3600000) - (timezone * 3600000);
+}

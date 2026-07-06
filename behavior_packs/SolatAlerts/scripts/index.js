@@ -11,23 +11,20 @@ const TIMEZONE = 8; // UTC+8 for Kuala Lumpur
 const firedAlerts = new Set();
 
 function broadcastReminder(prayerName, minutesRemaining, formattedTime) {
-    const message = `§e[Solat] ${minutesRemaining} minutes remaining until ${prayerName} (${formattedTime}).`;
+    const message = `§e[Solat] ${prayerName} in ${minutesRemaining}m (${formattedTime})`;
     for (const player of world.getAllPlayers()) {
         player.sendMessage(message);
     }
 }
 
 function broadcastStartAlert(prayerName) {
-    const chatMsg = `§a[Solat] Time for ${prayerName} prayer has started.`;
+    const chatMsg = `§a[Solat] ${prayerName} started.`;
     const title = `§aTime for ${prayerName}`;
     const subtitle = `§7Please take a break to pray`;
 
     for (const player of world.getAllPlayers()) {
-        // Send Chat
         player.sendMessage(chatMsg);
-        // Show Title & Subtitle
         player.onScreenDisplay.setTitle(title, { subtitle: subtitle });
-        // Play Chime Sound
         player.playSound('random.levelup', { volume: 0.5, pitch: 1.0 });
     }
 }
