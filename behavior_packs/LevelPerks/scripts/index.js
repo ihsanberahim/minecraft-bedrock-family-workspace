@@ -80,8 +80,8 @@ function applyEffectSafely(player, effectId, tierEffect) {
     const targetAmplifier = tierEffect.amplifier;
 
     if (!active || 
-        active.duration <= EFFECT_DURATION || 
-        active.amplifier < targetAmplifier) {
+        active.amplifier < targetAmplifier || 
+        (active.amplifier === targetAmplifier && active.duration <= EFFECT_DURATION)) {
         player.addEffect(effectId, EFFECT_DURATION, { amplifier: targetAmplifier, showParticles: false });
     }
 }

@@ -274,6 +274,19 @@ async function runTests() {
     }
     console.log("PASS: Active high-amplifier effect was not downgraded.");
 
+    // -- No Downgrading with Short Duration:
+    // A player with an active high-amplifier effect with short duration (e.g. Resistance II, duration 100)
+    // does NOT have it overwritten/downgraded by a lower perk (e.g. Resistance I).
+    const playerHighAmpShort = createTestPlayer("HighAmpShortPlayer", 10); // Tier 1 provides Resistance I (amplifier 0)
+    playerHighAmpShort.activeEffects.set('resistance', { amplifier: 1, duration: 100 }); // Resistance II, short duration
+    callback();
+    // It should NOT have added Resistance I (so appliedEffects for resistance should be empty)
+    if (playerHighAmpShort.appliedEffects.some(e => e.effectId === 'resistance')) {
+        throw new Error("HighAmpShortPlayer: active high-amplifier effect with short duration was overwritten/downgraded by lower amplifier effect.");
+    }
+    console.log("PASS: Active high-amplifier effect with short duration was not downgraded.");
+
+
     // -- No Overwriting Long-Duration:
     // A player with an active equal-amplifier effect with long duration (e.g. Regeneration I, duration 1200)
     // does NOT have it overwritten.
