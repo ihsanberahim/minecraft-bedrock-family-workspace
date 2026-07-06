@@ -1,171 +1,49 @@
-### Task 1: Update SimpleHomes Script with UI Menus and Compass Listener
+### Task 1: Scaffolding the SolatAlerts Behavior Pack
 
 **Files:**
-- Modify: `e:/minecraft-bedrock-server-local/behavior_packs/SimpleHomes/scripts/index.js`
+- Create: `behavior_packs/SolatAlerts/manifest.json`
 
 **Interfaces:**
-- Consumes: `@minecraft/server`, `@minecraft/server-ui`
-- Produces: None (self-contained UI handlers)
+- Consumes: None
+- Produces: A registered Minecraft Bedrock Behavior Pack header and script module configuration.
 
-- [ ] **Step 1: Replace index.js content with UI menus implementation**
+- [ ] **Step 1: Create the Behavior Pack manifest.json**
 
-Modify `e:/minecraft-bedrock-server-local/behavior_packs/SimpleHomes/scripts/index.js` to implement the forms, button actions, and `world.afterEvents.itemUse` listener.
-
-```javascript
-import { system, world } from '@minecraft/server';
-import { ActionFormData, ModalFormData } from '@minecraft/server-ui';
-
-function getHomes(player) {
-    try {
-        const homesStr = player.getDynamicProperty("homes_data");
-        if (homesStr) {
-            return JSON.parse(homesStr);
+Create `behavior_packs/SolatAlerts/manifest.json` with the following content:
+```json
+{
+    "format_version": 2,
+    "header": {
+        "name": "Solat Alerts",
+        "description": "Calculates and alerts real-world prayer times for Kuala Lumpur (UTC+8).",
+        "uuid": "8f3e2d6b-7c1a-4d9e-a8f2-1b3c4d5e6f7a",
+        "version": [1, 0, 0],
+        "min_engine_version": [ 1, 21, 20 ]
+    },
+    "modules": [
+        {
+            "type": "script",
+            "language": "javascript",
+            "uuid": "9f4e3d7c-8d2b-5e0f-b9a3-2c4d5e6f7a8b",
+            "entry": "scripts/index.js",
+            "version": [1, 0, 0]
         }
-    } catch (e) {
-        console.warn("Failed to parse homes for player: " + player.name, e);
-    }
-    return {};
-}
-
-function saveHomes(player, homes) {
-    try {
-        player.setDynamicProperty("homes_data", JSON.stringify(homes));
-    } catch (e) {
-        console.error("Failed to save homes for player: " + player.name, e);
-    }
-}
-
-function showMainMenu(player) {
-    const form = new ActionFormData()
-        .title("Simple Homes Menu")
-        .body("Select an action:")
-        .button("🏠 Teleport to Home")
-        .button("📍 Set New Home")
-        .button("❌ Delete a Home");
-
-    form.show(player).then((response) => {
-        if (response.canceled) return;
-        
-        const selection = response.selection;
-        if (selection === 0) {
-            showTeleportMenu(player);
-        } else if (selection === 1) {
-            showSetHomeMenu(player);
-        } else if (selection === 2) {
-            showDeleteMenu(player);
+    ],
+    "capabilities": [ "script_eval" ],
+    "dependencies": [
+        {
+            "module_name": "@minecraft/server",
+            "version": "1.15.0"
         }
-    }).catch((err) => {
-        console.error("Error showing main menu: ", err);
-    });
+    ]
 }
-
-function showTeleportMenu(player) {
-    const homes = getHomes(player);
-    const homeNames = Object.keys(homes);
-
-    if (homeNames.length === 0) {
-        player.sendMessage("§eYou don't have any saved homes yet. Use the compass to set one!");
-        return;
-    }
-
-    const form = new ActionFormData()
-        .title("Teleport to Home")
-        .body("Choose a home to teleport to:");
-
-    for (const name of homeNames) {
-        const h = homes[name];
-        const dimFriendly = h.dimension.replace('minecraft:', '');
-        form.button(`🏠 ${name}\n(${dimFriendly})`);
-    }
-
-    form.show(player).then((response) => {
-        if (response.canceled) return;
-
-        const homeName = homeNames[response.selection];
-        const targetHome = homes[homeName];
-
-        if (targetHome) {
-            player.teleport(
-                { x: targetHome.x, y: targetHome.y, z: targetHome.z },
-                { dimension: world.getDimension(targetHome.dimension) }
-            );
-            player.sendMessage(`§aTeleported to home "§e${homeName}§a"!`);
-        }
-    }).catch((err) => {
-        console.error("Error showing teleport menu: ", err);
-    });
-}
-
-function showSetHomeMenu(player) {
-    const form = new ModalFormData()
-        .title("Set New Home")
-        .textField("Enter a name for this home location:", "e.g., base, cave, castle", "home");
-
-    form.show(player).then((response) => {
-        if (response.canceled) return;
-
-        const homeName = response.formValues[0].trim() || 'home';
-        const location = player.location;
-        const dimension = player.dimension.id;
-        const homes = getHomes(player);
-
-        homes[homeName] = {
-            x: Math.round(location.x * 100) / 100,
-            y: Math.round(location.y * 100) / 100,
-            z: Math.round(location.z * 100) / 100,
-            dimension: dimension
-        };
-
-        saveHomes(player, homes);
-        player.sendMessage(`§aSuccess: Home "§e${homeName}§a" has been set at current position!`);
-    }).catch((err) => {
-        console.error("Error showing set home menu: ", err);
-    });
-}
-
-function showDeleteMenu(player) {
-    const homes = getHomes(player);
-    const homeNames = Object.keys(homes);
-
-    if (homeNames.length === 0) {
-        player.sendMessage("§eYou don't have any saved homes yet.");
-        return;
-    }
-
-    const form = new ActionFormData()
-        .title("Delete a Home")
-        .body("Select a home to delete:");
-
-    for (const name of homeNames) {
-        form.button(`❌ ${name}`);
-    }
-
-    form.show(player).then((response) => {
-        if (response.canceled) return;
-
-        const homeName = homeNames[response.selection];
-        delete homes[homeName];
-        saveHomes(player, homes);
-        player.sendMessage(`§aSuccess: Home "§e${homeName}§a" has been deleted!`);
-    }).catch((err) => {
-        console.error("Error showing delete menu: ", err);
-    });
-}
-
-// Listen for itemUse events to trigger the UI menu
-world.afterEvents.itemUse.subscribe((eventData) => {
-    const { source: player, itemStack } = eventData;
-
-    if (itemStack && itemStack.typeId === "minecraft:compass") {
-        system.run(() => {
-            showMainMenu(player);
-        });
-    }
-});
 ```
 
-- [ ] **Step 2: Save the file and confirm formatting**
+- [ ] **Step 2: Commit**
 
-- [ ] **Step 3: Update world behavior packs definition if needed**
+```bash
+git add behavior_packs/SolatAlerts/manifest.json
+git commit -m "feat: scaffold SolatAlerts behavior pack manifest"
+```
 
-Make sure `world_behavior_packs.json` still registers the package.
+---
