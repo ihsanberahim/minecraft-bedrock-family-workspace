@@ -1,6 +1,6 @@
 import { system, world } from '@minecraft/server';
 
-export const EFFECT_DURATION = 300;
+export const EFFECT_DURATION = 120;
 export const TICK_INTERVAL = 100;
 
 
@@ -69,21 +69,33 @@ export function getTier(level) {
 }
 
 /**
+ * Safely applies an effect to a player, avoiding downgrading or redundant overwriting.
+ * @param {import('@minecraft/server').Player} player
+ * @param {string} effectId
+ * @param {object|null} tierEffect
+ */
+function applyEffectSafely(player, effectId, tierEffect) {
+    if (!tierEffect) return;
+    const active = player.getEffect(effectId);
+    const targetAmplifier = tierEffect.amplifier;
+
+    if (!active || 
+        active.duration <= EFFECT_DURATION || 
+        active.amplifier < targetAmplifier) {
+        player.addEffect(effectId, EFFECT_DURATION, { amplifier: targetAmplifier, showParticles: false });
+    }
+}
+
+/**
  * Applies the passive effects for the given tier to the player.
- * Effects are applied with a 300-tick duration (15s) and no particles.
+ * Effects are applied with a 120-tick duration (6s) and no particles.
  * @param {import('@minecraft/server').Player} player
  * @param {number} tierIndex
  */
 export function applyTierEffects(player, tierIndex) {
     const tier = TIER_CONFIG[tierIndex];
-    const effectOptions = { showParticles: false };
-
-    if (tier.resistance) {
-        player.addEffect('resistance', EFFECT_DURATION, { amplifier: tier.resistance.amplifier, ...effectOptions });
-    }
-    if (tier.regen) {
-        player.addEffect('regeneration', EFFECT_DURATION, { amplifier: tier.regen.amplifier, ...effectOptions });
-    }
+    applyEffectSafely(player, 'resistance', tier.resistance);
+    applyEffectSafely(player, 'regeneration', tier.regen);
 }
 
 // Main loop — runs every TICK_INTERVAL ticks

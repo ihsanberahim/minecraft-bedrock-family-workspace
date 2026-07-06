@@ -5,7 +5,13 @@ function createTestPlayer(name, level) {
     const player = addMockPlayer(name);
     player.level = level;
     player.appliedEffects = [];
+    player.activeEffects = new Map();
+    player.getEffect = function (effectId) {
+        return this.activeEffects.get(effectId);
+    };
     player.addEffect = function (effectId, duration, options) {
+        const amplifier = options?.amplifier ?? 0;
+        this.activeEffects.set(effectId, { amplifier, duration });
         this.appliedEffects.push({ effectId, duration, options });
     };
     player.dynamicProperties = {};
@@ -88,27 +94,27 @@ async function runTests() {
         "P_Level0": [],
         "P_Level9": [],
         "P_Level10": [
-            { effectId: 'resistance', duration: 300, options: { amplifier: 0, showParticles: false } }
+            { effectId: 'resistance', duration: 120, options: { amplifier: 0, showParticles: false } }
         ],
         "P_Level20": [
-            { effectId: 'resistance', duration: 300, options: { amplifier: 0, showParticles: false } },
-            { effectId: 'regeneration', duration: 300, options: { amplifier: 0, showParticles: false } }
+            { effectId: 'resistance', duration: 120, options: { amplifier: 0, showParticles: false } },
+            { effectId: 'regeneration', duration: 120, options: { amplifier: 0, showParticles: false } }
         ],
         "P_Level30": [
-            { effectId: 'resistance', duration: 300, options: { amplifier: 1, showParticles: false } },
-            { effectId: 'regeneration', duration: 300, options: { amplifier: 0, showParticles: false } }
+            { effectId: 'resistance', duration: 120, options: { amplifier: 1, showParticles: false } },
+            { effectId: 'regeneration', duration: 120, options: { amplifier: 0, showParticles: false } }
         ],
         "P_Level40": [
-            { effectId: 'resistance', duration: 300, options: { amplifier: 1, showParticles: false } },
-            { effectId: 'regeneration', duration: 300, options: { amplifier: 1, showParticles: false } }
+            { effectId: 'resistance', duration: 120, options: { amplifier: 1, showParticles: false } },
+            { effectId: 'regeneration', duration: 120, options: { amplifier: 1, showParticles: false } }
         ],
         "P_Level50": [
-            { effectId: 'resistance', duration: 300, options: { amplifier: 2, showParticles: false } },
-            { effectId: 'regeneration', duration: 300, options: { amplifier: 1, showParticles: false } }
+            { effectId: 'resistance', duration: 120, options: { amplifier: 2, showParticles: false } },
+            { effectId: 'regeneration', duration: 120, options: { amplifier: 1, showParticles: false } }
         ],
         "P_Level60": [
-            { effectId: 'resistance', duration: 300, options: { amplifier: 2, showParticles: false } },
-            { effectId: 'regeneration', duration: 300, options: { amplifier: 1, showParticles: false } }
+            { effectId: 'resistance', duration: 120, options: { amplifier: 2, showParticles: false } },
+            { effectId: 'regeneration', duration: 120, options: { amplifier: 1, showParticles: false } }
         ],
     };
 
@@ -251,6 +257,64 @@ async function runTests() {
         throw new Error(`Expected third message to contain 'Level 10', got: ${lastMsg.message}`);
     }
     console.log("PASS: Tier change notifications and dynamic property updates verified successfully.");
+
+    // 7. Test Safe Effect Overwriting and Downgrading
+    console.log("Testing safe effect overwriting and downgrading scenarios...");
+    mockState.reset();
+
+    // -- No Downgrading:
+    // A player with an active high-amplifier effect (e.g. Resistance II, duration 3600)
+    // does NOT have it overwritten by a lower perk (e.g. Resistance I).
+    const playerHighAmp = createTestPlayer("HighAmpPlayer", 10); // Tier 1 provides Resistance I (amplifier 0)
+    playerHighAmp.activeEffects.set('resistance', { amplifier: 1, duration: 3600 }); // Resistance II
+    callback();
+    // It should NOT have added Resistance I (so appliedEffects for resistance should be empty)
+    if (playerHighAmp.appliedEffects.some(e => e.effectId === 'resistance')) {
+        throw new Error("HighAmpPlayer: active high-amplifier effect was overwritten by lower amplifier effect.");
+    }
+    console.log("PASS: Active high-amplifier effect was not downgraded.");
+
+    // -- No Overwriting Long-Duration:
+    // A player with an active equal-amplifier effect with long duration (e.g. Regeneration I, duration 1200)
+    // does NOT have it overwritten.
+    const playerLongDuration = createTestPlayer("LongDurationPlayer", 20); // Tier 2 provides Regeneration I (amplifier 0)
+    playerLongDuration.activeEffects.set('regeneration', { amplifier: 0, duration: 1200 }); // Regeneration I
+    callback();
+    // It should NOT have added Regeneration I (appliedEffects for regeneration should be empty)
+    if (playerLongDuration.appliedEffects.some(e => e.effectId === 'regeneration')) {
+        throw new Error("LongDurationPlayer: active equal-amplifier effect with long duration was overwritten.");
+    }
+    console.log("PASS: Active equal-amplifier effect with long duration was not overwritten.");
+
+    // -- Successful Refresh:
+    // A player with our perk effect that is about to expire (duration <= 120) gets refreshed.
+    const playerRefresh = createTestPlayer("RefreshPlayer", 10); // Tier 1 provides Resistance I (amplifier 0)
+    playerRefresh.activeEffects.set('resistance', { amplifier: 0, duration: 120 }); // Resistance I about to expire
+    callback();
+    // It SHOULD have refreshed it (appliedEffects should contain resistance)
+    const refreshEffect = playerRefresh.appliedEffects.find(e => e.effectId === 'resistance');
+    if (!refreshEffect) {
+        throw new Error("RefreshPlayer: expiring effect was not refreshed.");
+    }
+    if (refreshEffect.duration !== 120) {
+        throw new Error(`RefreshPlayer: refreshed effect duration is ${refreshEffect.duration}, expected 120.`);
+    }
+    console.log("PASS: Expiring effect was successfully refreshed.");
+
+    // -- Instant Upgrade:
+    // A player with a lower-amplifier effect (e.g. Resistance I) gets upgraded immediately if their perk tier gives Resistance II.
+    const playerUpgrade = createTestPlayer("UpgradePlayer", 30); // Tier 3 provides Resistance II (amplifier 1)
+    playerUpgrade.activeEffects.set('resistance', { amplifier: 0, duration: 3600 }); // Resistance I active (high duration)
+    callback();
+    // It SHOULD have upgraded to Resistance II (appliedEffects should contain resistance with amplifier 1)
+    const upgradeEffect = playerUpgrade.appliedEffects.find(e => e.effectId === 'resistance');
+    if (!upgradeEffect) {
+        throw new Error("UpgradePlayer: lower-amplifier effect was not upgraded.");
+    }
+    if (upgradeEffect.options.amplifier !== 1) {
+        throw new Error(`UpgradePlayer: upgraded amplifier is ${upgradeEffect.options.amplifier}, expected 1.`);
+    }
+    console.log("PASS: Lower-amplifier effect was immediately upgraded.");
 
     console.log("All tests passed successfully!");
 }
