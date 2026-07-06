@@ -1,6 +1,6 @@
 # Progress Ledger
 
 - [x] Task 1: scaffold behavior pack manifest (commits 21f46e0..31499df, review clean)
-- [ ] Task 2: implement and test math library
+- [x] Task 2: implement and test math library (commit dc1ffe6, review clean)
 - [ ] Task 3: implement background loop and alert dispatches
 - [ ] Task 4: activate behavior pack and verify server runs
