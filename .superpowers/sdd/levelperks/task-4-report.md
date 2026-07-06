@@ -65,4 +65,15 @@
 
 ## Git Repository Status
 - All implementation and tests are fully committed.
-- No further changes or new commits were necessary.
+- The latest safe effect overwriting fix has been successfully committed.
+
+## Safe Effect Overwrite Fix
+We resolved the active effect overwriting & downgrading issue raised in the review with the following steps:
+1. **Safe Effect Application**: Implemented `applyEffectSafely(player, effectId, tierEffect)` which inspects the active effect using `player.getEffect(effectId)` before applying the new perk effect. Overwriting is bypassed if the player has an active effect of the same type that is higher in amplifier, or equal in amplifier with a remaining duration greater than `EFFECT_DURATION`.
+2. **Updated Duration**: Changed `EFFECT_DURATION` from `300` to `120` (6 seconds) to ensure rapid natural expiration on server exit or tier downgrades.
+3. **Test Harness Extension**: 
+   - Mocked `player.getEffect(effectId)` in `tests/test_levelperks.js` to return `{ amplifier, duration }` based on a local `activeEffects` map.
+   - Updated `player.addEffect` to populate and maintain the local `activeEffects` map.
+   - Added 4 test cases to verify the exact behavior of safe effect overwrite/refresh (No Downgrading, No Overwriting Long-Duration, Successful Refresh, and Instant Upgrade).
+4. **Verification**: Ran the test suite to confirm all tests pass successfully, and performed a server boot test verifying no startup errors or scripting conflicts.
+5. **Commit**: Committed the code changes to the local repository.
