@@ -71,11 +71,16 @@ function showTeleportMenu(player) {
         const targetHome = homes[homeName];
 
         if (targetHome) {
-            player.teleport(
-                { x: targetHome.x, y: targetHome.y, z: targetHome.z },
-                { dimension: world.getDimension(targetHome.dimension) }
-            );
-            player.sendMessage(`§aTeleported to home "§e${homeName}§a"!`);
+            try {
+                player.teleport(
+                    { x: targetHome.x, y: targetHome.y, z: targetHome.z },
+                    { dimension: world.getDimension(targetHome.dimension) }
+                );
+                player.sendMessage(`§aTeleported to home "§e${homeName}§a"!`);
+            } catch (error) {
+                player.sendMessage("§cError: Teleport failed. The destination area might not be loaded.");
+                console.error("Teleport failed: ", error);
+            }
         }
     }).catch((err) => {
         console.error("Error showing teleport menu: ", err);
