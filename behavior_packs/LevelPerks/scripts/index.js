@@ -1,5 +1,9 @@
 import { system, world } from '@minecraft/server';
 
+export const EFFECT_DURATION = 300;
+export const TICK_INTERVAL = 100;
+
+
 /**
  * Each entry describes what effects to apply at that tier.
  * null means the effect is not active at this tier.
@@ -44,21 +48,21 @@ export function applyTierEffects(player, tierIndex) {
     const effectOptions = { showParticles: false };
 
     if (tier.resistance) {
-        player.addEffect('resistance', 300, { amplifier: tier.resistance.amplifier, ...effectOptions });
+        player.addEffect('resistance', EFFECT_DURATION, { amplifier: tier.resistance.amplifier, ...effectOptions });
     }
     if (tier.regen) {
-        player.addEffect('regeneration', 300, { amplifier: tier.regen.amplifier, ...effectOptions });
+        player.addEffect('regeneration', EFFECT_DURATION, { amplifier: tier.regen.amplifier, ...effectOptions });
     }
 }
 
-// Main loop — runs every 100 ticks (5 seconds)
+// Main loop — runs every TICK_INTERVAL ticks
 system.runInterval(() => {
-    try {
-        for (const player of world.getAllPlayers()) {
+    for (const player of world.getAllPlayers()) {
+        try {
             const tier = getTier(player.level);
             applyTierEffects(player, tier);
+        } catch (e) {
+            console.warn('[LevelPerks] Error in player effect processing:', e);
         }
-    } catch (e) {
-        console.warn('[LevelPerks] Error in effect loop:', e);
     }
-}, 100);
+}, TICK_INTERVAL);

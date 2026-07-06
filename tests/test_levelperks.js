@@ -129,8 +129,48 @@ async function runTests() {
     }
 
     console.log("PASS: All player tier effects applied correctly in loop!");
+
+    // 5. Test error isolation in loop
+    console.log("Testing error isolation in player loop...");
+    mockState.reset();
+
+    const badPlayer = createTestPlayer("BadPlayer", 30);
+    badPlayer.addEffect = function() {
+        throw new Error("Simulated addEffect error");
+    };
+
+    const goodPlayer = createTestPlayer("GoodPlayer", 30);
+
+    // Run the callback (suppressing console.warn output to keep logs clean or letting it print to show it caught it)
+    const originalWarn = console.warn;
+    let warnCalled = false;
+    console.warn = (msg, err) => {
+        warnCalled = true;
+        if (msg.includes("[LevelPerks] Error in player") || msg.includes("[LevelPerks] Error in effect loop")) {
+            // expected warn
+        } else {
+            originalWarn(msg, err);
+        }
+    };
+
+    try {
+        callback();
+    } finally {
+        console.warn = originalWarn;
+    }
+
+    if (!warnCalled) {
+        throw new Error("Expected console.warn to be called for the simulated error.");
+    }
+
+    if (goodPlayer.appliedEffects.length === 0) {
+        throw new Error("GoodPlayer should have received effects even though BadPlayer failed.");
+    }
+    console.log("PASS: Error isolation verified. BadPlayer failure did not abort loop.");
+
     console.log("All tests passed successfully!");
 }
+
 
 runTests().catch(err => {
     console.error("FAIL:", err);
