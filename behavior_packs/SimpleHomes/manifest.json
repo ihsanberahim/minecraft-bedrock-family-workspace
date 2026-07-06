@@ -1,0 +1,26 @@
+{
+    "format_version": 2,
+    "header": {
+        "name": "Simple Homes",
+        "description": "Allows players to set and teleport to saved home locations using !sethome and !home.",
+        "uuid": "5cfa7975-d142-4b77-8495-3bc21ea4b207",
+        "version": [1, 0, 0],
+        "min_engine_version": [ 1, 21, 20 ]
+    },
+    "modules": [
+        {
+            "type": "script",
+            "language": "javascript",
+            "uuid": "e7b9e831-294b-4867-b50a-e32cf9bd1db0",
+            "entry": "scripts/index.js",
+            "version": [1, 0, 0]
+        }
+    ],
+    "capabilities": [ "script_eval" ],
+    "dependencies": [
+        {
+            "module_name": "@minecraft/server",
+            "version": "1.15.0"
+        }
+    ]
+}
