@@ -26,8 +26,7 @@ function broadcastStartAlert(prayerName) {
         // Send Chat
         player.sendMessage(chatMsg);
         // Show Title & Subtitle
-        player.onScreenDisplay.setTitle(title);
-        player.onScreenDisplay.setSubtitle(subtitle);
+        player.onScreenDisplay.setTitle(title, { subtitle: subtitle });
         // Play Chime Sound
         player.playSound('random.levelup', { volume: 0.5, pitch: 1.0 });
     }
@@ -68,7 +67,8 @@ function checkPrayerTimes() {
             }
 
             // Check start time (0 minutes or crossed over up to 1 minute to avoid missing)
-            if (diffMinutes <= 0 && diffMinutes >= -1) {
+            const diffMinsExact = diffHours * 60;
+            if (diffMinsExact <= 0 && diffMinsExact >= -1.0) {
                 const alertKey = `${dateStr}-${prayer.name}-0`;
                 if (!firedAlerts.has(alertKey)) {
                     firedAlerts.add(alertKey);
