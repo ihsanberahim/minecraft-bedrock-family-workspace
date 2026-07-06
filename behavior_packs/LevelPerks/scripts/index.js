@@ -24,6 +24,37 @@ export const TIER_CONFIG = [
     { threshold: 50, resistance: { amplifier: 2 }, regen: { amplifier: 1 } },
 ];
 
+const TIER_LABELS = [
+    null, // tier 0 — no notification
+    { level: 10, perks: '§bProtection I §7(Resistance I)' },
+    { level: 20, perks: '§bProtection I §7(Resistance I)§7, §bRegeneration I' },
+    { level: 30, perks: '§bProtection II §7(Resistance II)§7, §bRegeneration I' },
+    { level: 40, perks: '§bProtection II §7(Resistance II)§7, §bRegeneration II' },
+    { level: 50, perks: '§bProtection III §7(Resistance III)§7, §bRegeneration II' },
+];
+
+/**
+ * Checks if the player has moved to a new tier and notifies them if so.
+ * Stores last notified tier in the "levelperks_tier" dynamic property.
+ * @param {import('@minecraft/server').Player} player
+ * @param {number} newTier
+ */
+function checkAndNotify(player, newTier) {
+    const stored = player.getDynamicProperty('levelperks_tier') ?? 0;
+    if (newTier === stored) return;
+
+    // Update stored tier (handles both upgrades and downgrades silently)
+    player.setDynamicProperty('levelperks_tier', newTier);
+
+    // Only send chat notification when moving UP a tier
+    if (newTier > stored && TIER_LABELS[newTier]) {
+        const label = TIER_LABELS[newTier];
+        player.sendMessage(
+            `§a✦ Level Up Perk! §eYou reached Level ${label.level}!\n§7You now have: ${label.perks}`
+        );
+    }
+}
+
 /**
  * Returns the tier index (0-5) that applies for the given XP level.
  * Scans from highest to lowest threshold.
@@ -61,6 +92,7 @@ system.runInterval(() => {
         try {
             const tier = getTier(player.level);
             applyTierEffects(player, tier);
+            checkAndNotify(player, tier);
         } catch (e) {
             console.warn('[LevelPerks] Error in player effect processing:', e);
         }

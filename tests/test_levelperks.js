@@ -8,6 +8,13 @@ function createTestPlayer(name, level) {
     player.addEffect = function (effectId, duration, options) {
         this.appliedEffects.push({ effectId, duration, options });
     };
+    player.dynamicProperties = {};
+    player.getDynamicProperty = function (key) {
+        return this.dynamicProperties[key];
+    };
+    player.setDynamicProperty = function (key, value) {
+        this.dynamicProperties[key] = value;
+    };
     return player;
 }
 
@@ -167,6 +174,83 @@ async function runTests() {
         throw new Error("GoodPlayer should have received effects even though BadPlayer failed.");
     }
     console.log("PASS: Error isolation verified. BadPlayer failure did not abort loop.");
+
+    // 6. Test Tier Change Notifications and Dynamic Properties
+    console.log("Testing tier change notifications and dynamic properties...");
+    mockState.reset();
+
+    const notifierPlayer = createTestPlayer("NotifierTestPlayer", 0);
+
+    // Initial check (Level 0)
+    callback();
+    if (notifierPlayer.getDynamicProperty("levelperks_tier") !== undefined && notifierPlayer.getDynamicProperty("levelperks_tier") !== 0) {
+        throw new Error(`Expected levelperks_tier to be undefined or 0 at level 0, got ${notifierPlayer.getDynamicProperty("levelperks_tier")}`);
+    }
+    if (mockState.messagesSent.length !== 0) {
+        throw new Error(`Expected 0 messages sent initially, got ${mockState.messagesSent.length}`);
+    }
+
+    // Upgrade to Level 10 (Tier 1)
+    notifierPlayer.level = 10;
+    callback();
+    if (notifierPlayer.getDynamicProperty("levelperks_tier") !== 1) {
+        throw new Error(`Expected levelperks_tier to be 1 at level 10, got ${notifierPlayer.getDynamicProperty("levelperks_tier")}`);
+    }
+    if (mockState.messagesSent.length !== 1) {
+        throw new Error(`Expected exactly 1 message sent on level 10 reached, got ${mockState.messagesSent.length}`);
+    }
+    let lastMsg = mockState.messagesSent[0];
+    if (lastMsg.player !== "NotifierTestPlayer") {
+        throw new Error(`Expected message for NotifierTestPlayer, got for ${lastMsg.player}`);
+    }
+    if (!lastMsg.message.includes("Level 10")) {
+        throw new Error(`Expected message to contain 'Level 10', got: ${lastMsg.message}`);
+    }
+
+    // Stay at Level 10 (No extra notification)
+    callback();
+    if (mockState.messagesSent.length !== 1) {
+        throw new Error(`Expected message count to remain 1 when level is unchanged, got ${mockState.messagesSent.length}`);
+    }
+
+    // Upgrade to Level 20 (Tier 2)
+    notifierPlayer.level = 20;
+    callback();
+    if (notifierPlayer.getDynamicProperty("levelperks_tier") !== 2) {
+        throw new Error(`Expected levelperks_tier to be 2 at level 20, got ${notifierPlayer.getDynamicProperty("levelperks_tier")}`);
+    }
+    if (mockState.messagesSent.length !== 2) {
+        throw new Error(`Expected exactly 2 messages sent after reaching level 20, got ${mockState.messagesSent.length}`);
+    }
+    lastMsg = mockState.messagesSent[1];
+    if (!lastMsg.message.includes("Level 20")) {
+        throw new Error(`Expected second message to contain 'Level 20', got: ${lastMsg.message}`);
+    }
+
+    // Downgrade to Level 5 (Silent downgrade)
+    notifierPlayer.level = 5;
+    callback();
+    if (notifierPlayer.getDynamicProperty("levelperks_tier") !== 0) {
+        throw new Error(`Expected levelperks_tier to be 0 after downgrade to level 5, got ${notifierPlayer.getDynamicProperty("levelperks_tier")}`);
+    }
+    if (mockState.messagesSent.length !== 2) {
+        throw new Error(`Expected messages count to remain 2 (silent downgrade), got ${mockState.messagesSent.length}`);
+    }
+
+    // Upgrade back to Level 10 (Tier 1 again - should notify again)
+    notifierPlayer.level = 10;
+    callback();
+    if (notifierPlayer.getDynamicProperty("levelperks_tier") !== 1) {
+        throw new Error(`Expected levelperks_tier to be 1 after leveling back up to 10, got ${notifierPlayer.getDynamicProperty("levelperks_tier")}`);
+    }
+    if (mockState.messagesSent.length !== 3) {
+        throw new Error(`Expected exactly 3 messages sent after releveling to 10, got ${mockState.messagesSent.length}`);
+    }
+    lastMsg = mockState.messagesSent[2];
+    if (!lastMsg.message.includes("Level 10")) {
+        throw new Error(`Expected third message to contain 'Level 10', got: ${lastMsg.message}`);
+    }
+    console.log("PASS: Tier change notifications and dynamic property updates verified successfully.");
 
     console.log("All tests passed successfully!");
 }
