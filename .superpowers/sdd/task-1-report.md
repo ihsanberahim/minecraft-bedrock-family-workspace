@@ -8,16 +8,17 @@
    - **Delete Menu**: Action form listing saved homes for deletion.
 2. **Compass Listener**: Registered a `world.afterEvents.itemUse` listener to detect when a player uses (right-clicks) a standard compass, opening the Main Menu.
 3. **Dependency Declaration**: Added `@minecraft/server-ui` version `1.3.0` as a dependency in `behavior_packs/SimpleHomes/manifest.json`.
+4. **Silent Teleport Failure Fix**: Wrapped the `player.teleport` call in a `try-catch` block to handle exceptions thrown during teleportation (such as chunk unloading or out of bounds). If teleporting fails, the player is sent a message explaining the failure, and the error is logged to the console.
 
 ## Files changed
-- [index.js](file:///E:/minecraft-bedrock-server-local/behavior_packs/SimpleHomes/scripts/index.js) — Replaced old chat commands script with UI forms and listener.
+- [index.js](file:///E:/minecraft-bedrock-server-local/behavior_packs/SimpleHomes/scripts/index.js) — Replaced old chat commands script with UI forms and listener; wrapped `player.teleport` in a try-catch block to handle failures.
 - [manifest.json](file:///E:/minecraft-bedrock-server-local/behavior_packs/SimpleHomes/manifest.json) — Declared `@minecraft/server-ui` dependency and updated description.
 - [.superpowers/sdd/progress.md](file:///E:/minecraft-bedrock-server-local/.superpowers/sdd/progress.md) — Marked Task 1 as complete.
 
 ## Self-review findings
 - **Completeness**: Evaluated script code against the task brief, verifying the presence of all menus (Main, Teleport, Set Home, Delete) and the item use listener.
 - **Robustness**: Ensured that cancels/form closing actions are gracefully ignored (`if (response.canceled) return;`) and do not throw warnings or crash the script.
-- **Validation**: Launched the Bedrock Dedicated Server and verified that the behavior pack loads successfully without any runtime startup errors, syntax exceptions, or dependency resolution issues.
+- **Validation**: Launched the Bedrock Dedicated Server and verified that the behavior pack loads successfully without any runtime startup errors, syntax exceptions, or dependency resolution issues. Verified the modified script syntactically using Node.js syntax checker.
 
 ## Issues or concerns
 - None. The server launched and successfully initialized both behavior packs (`SafeStorage` and `SimpleHomes`).
