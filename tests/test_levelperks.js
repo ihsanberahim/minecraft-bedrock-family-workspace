@@ -94,27 +94,27 @@ async function runTests() {
         "P_Level0": [],
         "P_Level9": [],
         "P_Level10": [
-            { effectId: 'resistance', duration: 120, options: { amplifier: 0, showParticles: false } }
+            { effectId: 'resistance', duration: 140, options: { amplifier: 0, showParticles: false } }
         ],
         "P_Level20": [
-            { effectId: 'resistance', duration: 120, options: { amplifier: 0, showParticles: false } },
-            { effectId: 'regeneration', duration: 120, options: { amplifier: 0, showParticles: false } }
+            { effectId: 'resistance', duration: 140, options: { amplifier: 0, showParticles: false } },
+            { effectId: 'regeneration', duration: 140, options: { amplifier: 0, showParticles: false } }
         ],
         "P_Level30": [
-            { effectId: 'resistance', duration: 120, options: { amplifier: 1, showParticles: false } },
-            { effectId: 'regeneration', duration: 120, options: { amplifier: 0, showParticles: false } }
+            { effectId: 'resistance', duration: 140, options: { amplifier: 1, showParticles: false } },
+            { effectId: 'regeneration', duration: 140, options: { amplifier: 0, showParticles: false } }
         ],
         "P_Level40": [
-            { effectId: 'resistance', duration: 120, options: { amplifier: 1, showParticles: false } },
-            { effectId: 'regeneration', duration: 120, options: { amplifier: 1, showParticles: false } }
+            { effectId: 'resistance', duration: 140, options: { amplifier: 1, showParticles: false } },
+            { effectId: 'regeneration', duration: 140, options: { amplifier: 1, showParticles: false } }
         ],
         "P_Level50": [
-            { effectId: 'resistance', duration: 120, options: { amplifier: 2, showParticles: false } },
-            { effectId: 'regeneration', duration: 120, options: { amplifier: 1, showParticles: false } }
+            { effectId: 'resistance', duration: 140, options: { amplifier: 2, showParticles: false } },
+            { effectId: 'regeneration', duration: 140, options: { amplifier: 1, showParticles: false } }
         ],
         "P_Level60": [
-            { effectId: 'resistance', duration: 120, options: { amplifier: 2, showParticles: false } },
-            { effectId: 'regeneration', duration: 120, options: { amplifier: 1, showParticles: false } }
+            { effectId: 'resistance', duration: 140, options: { amplifier: 2, showParticles: false } },
+            { effectId: 'regeneration', duration: 140, options: { amplifier: 1, showParticles: false } }
         ],
     };
 
@@ -291,7 +291,7 @@ async function runTests() {
     // A player with an active equal-amplifier effect with long duration (e.g. Regeneration I, duration 1200)
     // does NOT have it overwritten.
     const playerLongDuration = createTestPlayer("LongDurationPlayer", 20); // Tier 2 provides Regeneration I (amplifier 0)
-    playerLongDuration.activeEffects.set('regeneration', { amplifier: 0, duration: 1200 }); // Regeneration I
+    playerLongDuration.activeEffects.set('regeneration', { amplifier: 0, duration: 1400 }); // Regeneration I
     callback();
     // It should NOT have added Regeneration I (appliedEffects for regeneration should be empty)
     if (playerLongDuration.appliedEffects.some(e => e.effectId === 'regeneration')) {
@@ -300,17 +300,17 @@ async function runTests() {
     console.log("PASS: Active equal-amplifier effect with long duration was not overwritten.");
 
     // -- Successful Refresh:
-    // A player with our perk effect that is about to expire (duration <= 120) gets refreshed.
+    // A player with our perk effect that is about to expire (duration <= 140) gets refreshed.
     const playerRefresh = createTestPlayer("RefreshPlayer", 10); // Tier 1 provides Resistance I (amplifier 0)
-    playerRefresh.activeEffects.set('resistance', { amplifier: 0, duration: 120 }); // Resistance I about to expire
+    playerRefresh.activeEffects.set('resistance', { amplifier: 0, duration: 140 }); // Resistance I about to expire
     callback();
     // It SHOULD have refreshed it (appliedEffects should contain resistance)
     const refreshEffect = playerRefresh.appliedEffects.find(e => e.effectId === 'resistance');
     if (!refreshEffect) {
         throw new Error("RefreshPlayer: expiring effect was not refreshed.");
     }
-    if (refreshEffect.duration !== 120) {
-        throw new Error(`RefreshPlayer: refreshed effect duration is ${refreshEffect.duration}, expected 120.`);
+    if (refreshEffect.duration !== 140) {
+        throw new Error(`RefreshPlayer: refreshed effect duration is ${refreshEffect.duration}, expected 140.`);
     }
     console.log("PASS: Expiring effect was successfully refreshed.");
 
@@ -337,3 +337,4 @@ runTests().catch(err => {
     console.error("FAIL:", err);
     process.exit(1);
 });
+

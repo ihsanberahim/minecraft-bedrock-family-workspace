@@ -1,6 +1,6 @@
-import { system, world } from '@minecraft/server';
+﻿import { system, world } from '@minecraft/server';
 
-export const EFFECT_DURATION = 120;
+export const EFFECT_DURATION = 140;
 export const TICK_INTERVAL = 100;
 
 
@@ -10,7 +10,7 @@ export const TICK_INTERVAL = 100;
  * amplifier is 0-indexed (0 = level I, 1 = level II, 2 = level III).
  */
 export const TIER_CONFIG = [
-    // Tier 0: < level 10 — no perks
+    // Tier 0: < level 10 â€” no perks
     { threshold: 0,  resistance: null,            regen: null },
     // Tier 1: >= level 10
     { threshold: 10, resistance: { amplifier: 0 }, regen: null },
@@ -25,12 +25,12 @@ export const TIER_CONFIG = [
 ];
 
 const TIER_LABELS = [
-    null, // tier 0 — no notification
-    { level: 10, perks: '§bProtection I §7(Resistance I)' },
-    { level: 20, perks: '§bProtection I §7(Resistance I)§7, §bRegeneration I' },
-    { level: 30, perks: '§bProtection II §7(Resistance II)§7, §bRegeneration I' },
-    { level: 40, perks: '§bProtection II §7(Resistance II)§7, §bRegeneration II' },
-    { level: 50, perks: '§bProtection III §7(Resistance III)§7, §bRegeneration II' },
+    null, // tier 0 â€” no notification
+    { level: 10, perks: 'Â§bProtection I Â§7(Resistance I)' },
+    { level: 20, perks: 'Â§bProtection I Â§7(Resistance I)Â§7, Â§bRegeneration I' },
+    { level: 30, perks: 'Â§bProtection II Â§7(Resistance II)Â§7, Â§bRegeneration I' },
+    { level: 40, perks: 'Â§bProtection II Â§7(Resistance II)Â§7, Â§bRegeneration II' },
+    { level: 50, perks: 'Â§bProtection III Â§7(Resistance III)Â§7, Â§bRegeneration II' },
 ];
 
 /**
@@ -50,7 +50,7 @@ function checkAndNotify(player, newTier) {
     if (newTier > stored && TIER_LABELS[newTier]) {
         const label = TIER_LABELS[newTier];
         player.sendMessage(
-            `§a✦ Level Up Perk! §eYou reached Level ${label.level}!\n§7You now have: ${label.perks}`
+            `Â§aâœ¦ Level Up Perk! Â§eYou reached Level ${label.level}!\nÂ§7You now have: ${label.perks}`
         );
     }
 }
@@ -98,7 +98,7 @@ export function applyTierEffects(player, tierIndex) {
     applyEffectSafely(player, 'regeneration', tier.regen);
 }
 
-// Main loop — runs every TICK_INTERVAL ticks
+// Main loop â€” runs every TICK_INTERVAL ticks
 system.runInterval(() => {
     for (const player of world.getAllPlayers()) {
         try {
@@ -110,3 +110,4 @@ system.runInterval(() => {
         }
     }
 }, TICK_INTERVAL);
+
