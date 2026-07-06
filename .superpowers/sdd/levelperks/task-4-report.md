@@ -77,3 +77,24 @@ We resolved the active effect overwriting & downgrading issue raised in the revi
    - Added 4 test cases to verify the exact behavior of safe effect overwrite/refresh (No Downgrading, No Overwriting Long-Duration, Successful Refresh, and Instant Upgrade).
 4. **Verification**: Ran the test suite to confirm all tests pass successfully, and performed a server boot test verifying no startup errors or scripting conflicts.
 5. **Commit**: Committed the code changes to the local repository.
+
+## Re-Review Spec Compliance Correction
+
+We resolved the critical issues identified in the Task 4 re-review:
+1. **Downgrading Stronger Effects with Short Remaining Duration**:
+   - Updated the check condition in `applyEffectSafely` inside [index.js](file:///e:/minecraft-bedrock-server-local/behavior_packs/LevelPerks/scripts/index.js) to:
+     ```javascript
+     if (!active || 
+         active.amplifier < targetAmplifier || 
+         (active.amplifier === targetAmplifier && active.duration <= EFFECT_DURATION)) {
+     ```
+   - This ensures that a stronger active effect (e.g., Resistance II / amplifier 1) with a short remaining duration (e.g., 100 ticks) is not overwritten and downgraded by a weaker perk (e.g., Resistance I / amplifier 0).
+2. **Additional Test Coverage**:
+   - Added a new unit test case in [test_levelperks.js](file:///e:/minecraft-bedrock-server-local/tests/test_levelperks.js): `"No Downgrading with Short Duration"`.
+   - Verified that a player with an active high-amplifier effect with short duration (e.g., Resistance II, duration 100) is NOT downgraded by a lower perk (e.g., Resistance I).
+3. **Verification and Server Boot Test**:
+   - Executed the unit tests via `node --experimental-vm-modules tests/test_levelperks.js` and confirmed all 5 safe effect overwrite scenarios successfully passed.
+   - Performed the server boot test with the updated scripting modules, verifying that the dedicated server starts and initializes without any runtime errors.
+4. **Commit**:
+   - Committed the changes to the Git repository.
+
