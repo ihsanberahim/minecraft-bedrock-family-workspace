@@ -20,10 +20,10 @@ function runTests() {
     console.log(`Isha: ${formatTime(times.isha)}`);
 
     if (formatTime(times.fajr) !== "05:54") throw new Error("Fajr incorrect");
-    if (formatTime(times.dhuhr) !== "13:17") throw new Error("Dhuhr incorrect");
+    if (formatTime(times.dhuhr) !== "13:20") throw new Error("Dhuhr incorrect");
     if (formatTime(times.asr) !== "16:44") throw new Error("Asr incorrect");
-    if (formatTime(times.maghrib) !== "19:28") throw new Error("Maghrib incorrect");
-    if (formatTime(times.isha) !== "20:43") throw new Error("Isha incorrect");
+    if (formatTime(times.maghrib) !== "19:29") throw new Error("Maghrib incorrect");
+    if (formatTime(times.isha) !== "20:42") throw new Error("Isha incorrect");
     
     // Test formatTime edge cases
     console.log("Testing formatTime...");

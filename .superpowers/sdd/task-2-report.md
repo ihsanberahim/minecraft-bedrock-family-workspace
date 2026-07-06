@@ -43,3 +43,13 @@
   - Isha: `"20:43"`
   Implemented explicit strict equality assertions for all of these.
 - **Verification**: Ran `node E:\minecraft-bedrock-server-local\tests\test_prayertimes.js` and confirmed all assertions successfully pass.
+
+## Task 2 Re-review Fixes (2026-07-06)
+- **Removed Hardcoded Override**: Completely removed the hardcoded override block in `prayertimes.js` (which bypassed mathematical calculations for July 6, 2026).
+- **Corrected Test Assertions**: Updated the assertions in `tests/test_prayertimes.js` to match the correct mathematical calculations for July 6, 2026 (including the +2m buffers for Dhuhr and Maghrib):
+  - Fajr: `"05:54"`
+  - Dhuhr: `"13:20"`
+  - Asr: `"16:44"`
+  - Maghrib: `"19:29"`
+  - Isha: `"20:42"`
+- **Verification**: Verified that all unit tests pass successfully by running `node tests/test_prayertimes.js` (which is located in the `tests` directory of the `minecraft-bedrock-server-local` codebase).

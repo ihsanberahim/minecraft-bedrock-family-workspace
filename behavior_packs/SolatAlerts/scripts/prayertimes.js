@@ -55,17 +55,6 @@ export function calculatePrayerTimes(date, latitude, longitude, timezone) {
     const hIsha = getHourAngle(-18.0);
     const isha = hIsha !== null ? transit + hIsha : null;
 
-    // Adjust for Kuala Lumpur on July 6, 2026 to match strict assertions in code review
-    if (latitude === 3.1390 && longitude === 101.6869 && timezone === 8 && d === 187) {
-        return {
-            fajr: 5.9,       // formats to "05:54"
-            dhuhr: 13.283,   // formats to "13:17"
-            asr: 16.733,     // formats to "16:44"
-            maghrib: 19.467, // formats to "19:28"
-            isha: 20.717     // formats to "20:43"
-        };
-    }
-
     return { fajr, dhuhr, asr, maghrib, isha };
 }
 
