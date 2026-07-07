@@ -1,9 +1,20 @@
-import { system, world, ItemStack } from '@minecraft/server';
+import { system, world, ItemStack, DynamicPropertiesDefinition } from '@minecraft/server';
 import { calculatePrayerTimes, formatTime, getLocalDecimalHours, getLocalDateString, getPrayerTimestamp } from './prayertimes.js';
 
 const LATITUDE = 3.1390;
 const LONGITUDE = 101.6869;
 const TIMEZONE = 8; // UTC+8 for Kuala Lumpur
+
+// Register dynamic properties for player
+world.beforeEvents.worldInitialize.subscribe(event => {
+    try {
+        const def = new DynamicPropertiesDefinition();
+        def.defineString('solat_last_reward', 30);
+        event.registerPlayerDynamicProperties(def);
+    } catch (e) {
+        console.error("Error registering player dynamic properties:", e);
+    }
+});
 
 // Tracks fired alerts for the day to avoid duplicates
 // Key format: YYYY-MM-DD-PRAYER-ALERT_TYPE
@@ -145,8 +156,8 @@ world.afterEvents.playerSpawn.subscribe(event => {
                     }
                     player.sendMessage(`§a+10 XP Bottles (prayer break).`);
                     player.playSound('random.levelup', { volume: 0.5, pitch: 1.2 });
+                    player.setDynamicProperty('solat_last_reward', expectedRewardKey);
                 }
-                player.setDynamicProperty('solat_last_reward', expectedRewardKey);
             }
         }
     } catch (e) {
