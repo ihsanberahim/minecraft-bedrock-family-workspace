@@ -1,58 +1,43 @@
-# SolatAlerts Short Messages & Prayer Rewards Implementation Plan
+# SolatAlerts Simplified Messages & Join Rewards Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Modify SolatAlerts behavior pack to shorten messages and award 10 XP bottles to players who go offline for at least 10 minutes starting at prayer time.
+**Goal:** Modify SolatAlerts to remove the `[Solat]` prefix from all notifications, clean up the old offline tracking code, and implement a join-based reward system that awards 10 Experience Bottles to players who join the server $\ge 10$ minutes after a prayer starts (once per prayer per day).
 
-**Architecture:** Use player dynamic properties (`solat_tracking`, `solat_logout_time`) to persist prayer warning attendance and logout time. Hook into playerLeave and playerSpawn events to calculate eligibility and add items.
+**Architecture:** Hook into the `playerSpawn` event on `initialSpawn: true`. Read player dynamic property `solat_last_reward` to prevent duplicate claiming.
 
 **Tech Stack:** Minecraft Bedrock Server Scripting API (@minecraft/server v1.15.0), Node.js for tests.
 
 ## Global Constraints
 - Target timezone is Kuala Lumpur (UTC+8).
 - Reward is exactly 10 Experience Bottles (vanilla `minecraft:experience_bottle`).
-- Eligibility window: logout before or at $T_{start} + 10$ minutes, login at or after $T_{start} + 10$ minutes.
+- Reward congratulate message is `§a+10 XP Bottles (prayer break).`
+- No `[Solat]` prefix in any alert messages.
 
 ---
 
-### Task 1: Shorten Alert Messages & Implement getPrayerTimestamp Helper
+### Task 1: Remove [Solat] Prefix and Clean Up Old Hooks
 
 **Files:**
 - Modify: `behavior_packs/SolatAlerts/scripts/index.js`
-- Modify: `behavior_packs/SolatAlerts/scripts/prayertimes.js`
 
 **Interfaces:**
 - Consumes: None
-- Produces: `getPrayerTimestamp(date, decimalHours, timezone)` returning epoch milliseconds or null.
+- Produces: Cleaned `index.js` without the player leave hook or `solat_tracking` warning updates.
 
-- [ ] **Step 1: Implement getPrayerTimestamp in prayertimes.js**
-  Add the helper function to `behavior_packs/SolatAlerts/scripts/prayertimes.js`:
-  ```javascript
-  export function getPrayerTimestamp(date, decimalHours, timezone) {
-      if (decimalHours === null || isNaN(decimalHours)) return null;
-      const localTimeMs = date.getTime() + (timezone * 60 * 60 * 1000);
-      const localDate = new Date(localTimeMs);
-      const y = localDate.getUTCFullYear();
-      const m = localDate.getUTCMonth();
-      const d = localDate.getUTCDate();
-      const localDayStartUTC = Date.UTC(y, m, d);
-      return localDayStartUTC + (decimalHours * 3600000) - (timezone * 3600000);
-  }
-  ```
-  Ensure it is exported.
-
-- [ ] **Step 2: Update index.js reminding and starting alert formats**
-  Update the broadcast messages in `behavior_packs/SolatAlerts/scripts/index.js`:
+- [ ] **Step 1: Clean up warning updates in warningIntervals loop**
+  In `behavior_packs/SolatAlerts/scripts/index.js`, remove any code updating `solat_tracking` dynamic property.
+  Modify `broadcastReminder` and `broadcastStartAlert` to remove the `[Solat]` prefix:
   ```javascript
   function broadcastReminder(prayerName, minutesRemaining, formattedTime) {
-      const message = `§e[Solat] ${prayerName} in ${minutesRemaining}m (${formattedTime})`;
+      const message = `§e${prayerName} in ${minutesRemaining}m (${formattedTime})`;
       for (const player of world.getAllPlayers()) {
           player.sendMessage(message);
       }
   }
 
   function broadcastStartAlert(prayerName) {
-      const chatMsg = `§a[Solat] ${prayerName} started.`;
+      const chatMsg = `§a${prayerName} started.`;
       const title = `§aTime for ${prayerName}`;
       const subtitle = `§7Please take a break to pray`;
 
@@ -64,147 +49,130 @@
   }
   ```
 
-- [ ] **Step 3: Run existing tests to verify failure**
-  Run tests: `node E:\minecraft-bedrock-server-local\tests\test_index.js`
-  Expected: Failure because tests assert the old text format.
+- [ ] **Step 2: Remove playerLeave hook**
+  Remove the `world.beforeEvents.playerLeave.subscribe` listener completely.
 
-- [ ] **Step 4: Update test assertions in test_index.js and run them**
-  Modify the text assertions in `tests/test_index.js`:
-  - Change `.includes("30 minutes remaining")` to `.includes("in 30m")` or similar.
-  - Change `.includes("started")` to check the updated message.
+- [ ] **Step 3: Run existing tests to verify failures**
   Run: `node E:\minecraft-bedrock-server-local\tests\test_index.js`
-  Expected: PASS.
+  Expected: FAIL on message assertions containing `[Solat]` and tests checking the old player leave hook.
+
+- [ ] **Step 4: Update tests to match new message formats and clean old leave tests**
+  In `tests/test_index.js`, update the regex or string checks to match the new formats without `[Solat]`. Remove references to `playerLeaveSubscribe`.
+  Run: `node E:\minecraft-bedrock-server-local\tests\test_index.js`
+  Expected: PASS on Test Cases 1-6 (Test Cases 7-12 will still fail or need removal, which we will address in Task 3).
 
 - [ ] **Step 5: Commit changes**
   Run:
   ```bash
-  git -C E:\minecraft-bedrock-server-local add behavior_packs/SolatAlerts/scripts/index.js behavior_packs/SolatAlerts/scripts/prayertimes.js tests/test_index.js
-  git -C E:\minecraft-bedrock-server-local commit -m "feat: shorten alert messages and add timestamp helper"
+  git -C E:\minecraft-bedrock-server-local add behavior_packs/SolatAlerts/scripts/index.js tests/test_index.js
+  git -C E:\minecraft-bedrock-server-local commit -m "feat: remove [Solat] prefix and clean old leave hook"
   ```
 
 ---
 
-### Task 2: Implement Warning Tracking and Logout/Spawn Hooks
+### Task 2: Implement Join-Based Reward System
 
 **Files:**
 - Modify: `behavior_packs/SolatAlerts/scripts/index.js`
 
 **Interfaces:**
-- Consumes: `getPrayerTimestamp(date, decimalHours, timezone)`
+- Consumes: `calculatePrayerTimes`, `getPrayerTimestamp`, `getLocalDateString`
+- Produces: Updated spawn handler in `index.js` awarding players who join late.
 
-- [ ] **Step 1: Update warning checker to update `solat_tracking` property**
-  In the warning ticker loop of `behavior_packs/SolatAlerts/scripts/index.js`, when a warning reminder (30, 10, or 5 mins) fires, update the dynamic property of online players:
-  ```javascript
-  // Inside warning block where broadcastReminder is called:
-  for (const player of world.getAllPlayers()) {
-      let tracking = { prayer: prayer.name, date: dateStr, alerts: [], startTime: getPrayerTimestamp(now, prayer.time, TIMEZONE) };
-      try {
-          const raw = player.getDynamicProperty('solat_tracking');
-          if (raw) {
-              const parsed = JSON.parse(raw);
-              if (parsed.prayer === prayer.name && parsed.date === dateStr) {
-                  tracking = parsed;
-              }
-          }
-      } catch (e) {}
-
-      if (!tracking.alerts.includes(mins)) {
-          tracking.alerts.push(mins);
-          player.setDynamicProperty('solat_tracking', JSON.stringify(tracking));
-      }
-  }
-  ```
-
-- [ ] **Step 2: Add Leave Hook**
-  Subscribe to player leave events in `behavior_packs/SolatAlerts/scripts/index.js` to store the logout timestamp:
-  ```javascript
-  world.beforeEvents.playerLeave.subscribe(event => {
-      try {
-          event.player.setDynamicProperty('solat_logout_time', Date.now().toString());
-      } catch (e) {
-          console.error("Error setting logout time: ", e);
-      }
-  });
-  ```
-
-- [ ] **Step 3: Add Spawn/Login Hook to check eligibility & award reward**
-  Import `ItemStack` at the top of `behavior_packs/SolatAlerts/scripts/index.js`:
-  ```javascript
-  import { system, world, ItemStack } from '@minecraft/server';
-  ```
-  Subscribe to player spawn events to process eligibility and award bottles:
+- [ ] **Step 1: Re-implement playerSpawn listener with join reward logic**
+  In `behavior_packs/SolatAlerts/scripts/index.js`, replace the playerSpawn listener with the following:
   ```javascript
   world.afterEvents.playerSpawn.subscribe(event => {
       const player = event.player;
-      if (!event.initialSpawn) return; // Only process on first login/join
+      if (!event.initialSpawn) return; // Only trigger when first joining the server
 
       try {
-          const rawTracking = player.getDynamicProperty('solat_tracking');
-          const rawLogout = player.getDynamicProperty('solat_logout_time');
-          if (!rawTracking || !rawLogout) return;
+          const now = new Date();
+          const dateStr = getLocalDateString(now, TIMEZONE);
 
-          const tracking = JSON.parse(rawTracking);
-          const logoutTime = parseInt(rawLogout, 10);
-          const loginTime = Date.now();
+          // Get prayer times for today
+          const times = calculatePrayerTimes(now, LATITUDE, LONGITUDE, TIMEZONE);
+          const prayerList = [
+              { name: "Fajr", time: times.fajr },
+              { name: "Dhuhr", time: times.dhuhr },
+              { name: "Asr", time: times.asr },
+              { name: "Maghrib", time: times.maghrib },
+              { name: "Isha", time: times.isha }
+          ];
 
-          // Check if player received all 3 alerts (30, 10, 5)
-          const receivedAll = [30, 10, 5].every(val => tracking.alerts.includes(val));
-          if (!receivedAll) return;
+          // Determine the latest prayer that started
+          let latestPrayer = null;
+          let latestStartTime = 0;
 
-          const startTime = tracking.startTime;
-          if (!startTime) return;
+          const currentMs = now.getTime();
 
-          const tenMinsMs = 10 * 60 * 1000;
-          // Must log out within 10 minutes of start, and log in at least 10 minutes after start
-          if (logoutTime <= startTime + tenMinsMs && loginTime >= startTime + tenMinsMs) {
-              // Award 10 experience bottles
-              const inventory = player.getComponent('inventory');
-              if (inventory && inventory.container) {
-                  const item = new ItemStack('minecraft:experience_bottle', 10);
-                  const remaining = inventory.container.addItem(item);
-                  if (remaining) {
-                      player.dimension.spawnItem(remaining, player.location);
+          for (const prayer of prayerList) {
+              const startTimeMs = getPrayerTimestamp(now, prayer.time, TIMEZONE);
+              if (startTimeMs && currentMs >= startTimeMs) {
+                  if (startTimeMs > latestStartTime) {
+                      latestStartTime = startTimeMs;
+                      latestPrayer = prayer;
                   }
-                  player.sendMessage(`§a✦ Thank you for taking a break to pray! You received 10 Experience Bottles. §a✦`);
-                  player.playSound('random.levelup', { volume: 0.5, pitch: 1.2 });
               }
           }
-          
-          // Clear tracking to avoid duplicate rewards
-          player.setDynamicProperty('solat_tracking', undefined);
+
+          if (!latestPrayer) return;
+
+          // Check if current time is at least 10 minutes past the start time
+          const tenMinutesMs = 10 * 60 * 1000;
+          if (currentMs >= latestStartTime + tenMinutesMs) {
+              // Check if already rewarded for this prayer on this day
+              const expectedRewardKey = `${latestPrayer.name}-${dateStr}`;
+              const lastReward = player.getDynamicProperty('solat_last_reward');
+
+              if (lastReward !== expectedRewardKey) {
+                  // Award 10 experience bottles
+                  const inventory = player.getComponent('inventory');
+                  if (inventory && inventory.container) {
+                      const item = new ItemStack('minecraft:experience_bottle', 10);
+                      const remaining = inventory.container.addItem(item);
+                      if (remaining) {
+                          player.dimension.spawnItem(remaining, player.location);
+                      }
+                      player.sendMessage(`§a+10 XP Bottles (prayer break).`);
+                      player.playSound('random.levelup', { volume: 0.5, pitch: 1.2 });
+                  }
+                  player.setDynamicProperty('solat_last_reward', expectedRewardKey);
+              }
+          }
       } catch (e) {
-          console.error("Error processing login reward: ", e);
+          console.error("Error in player join reward processing:", e);
       }
   });
   ```
 
-- [ ] **Step 4: Commit changes**
+- [ ] **Step 2: Commit changes**
   Run:
   ```bash
   git -C E:\minecraft-bedrock-server-local add behavior_packs/SolatAlerts/scripts/index.js
-  git -C E:\minecraft-bedrock-server-local commit -m "feat: implement warning tracking and login/logout hooks"
+  git -C E:\minecraft-bedrock-server-local commit -m "feat: implement join-based solat reward system"
   ```
 
 ---
 
-### Task 3: Implement Automated Tests for Tracker and Reward
+### Task 3: Implement Automated Tests for Join-Based Rewards
 
 **Files:**
 - Modify: `tests/test_index.js`
 
-- [ ] **Step 1: Write test case for offline prayer reward eligibility**
-  Add mock support for dynamic properties and events to `tests/test_index.js` if not already present, and test all eligibility logic:
-  - Test case: Player receives 30m, 10m, and 5m warning, logs out, logs back in after 10 mins. Assert `ItemStack` added to inventory.
-  - Test case: Player logs in too early (<10 mins). Assert no reward.
-  - Test case: Player missed 30m warning. Assert no reward.
+- [ ] **Step 1: Write test cases in test_index.js**
+  Remove the old Test Cases 7-12 and replace them with:
+  - **Test Case 7 (Eligible join):** Player joins 15 minutes after Asr starts. Verify 10 Experience Bottles are added to their inventory and `solat_last_reward` is updated to `"Asr-2026-07-06"`.
+  - **Test Case 8 (Ineligible join - too early):** Player joins 5 minutes after Asr starts. Verify no bottles are awarded.
+  - **Test Case 9 (Ineligible join - already claimed):** Player joins 15 minutes after Asr starts, but has `solat_last_reward` set to `"Asr-2026-07-06"`. Verify no bottles are awarded.
 
 - [ ] **Step 2: Run tests**
   Run: `node E:\minecraft-bedrock-server-local\tests\test_index.js`
-  Expected: PASS.
+  Expected: PASS on all test cases (1 to 9).
 
 - [ ] **Step 3: Commit**
   Run:
   ```bash
   git -C E:\minecraft-bedrock-server-local add tests/test_index.js
-  git -C E:\minecraft-bedrock-server-local commit -m "test: add tests for offline prayer reward system"
+  git -C E:\minecraft-bedrock-server-local commit -m "test: implement tests for join-based prayer rewards"
   ```
