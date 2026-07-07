@@ -1,49 +1,60 @@
-### Task 1: Scaffolding the SolatAlerts Behavior Pack
+### Task 1: Behavior Pack Setup
 
 **Files:**
-- Create: `behavior_packs/SolatAlerts/manifest.json`
+- Create: `development_behavior_packs/BlockClaim/manifest.json`
+- Create: `development_behavior_packs/BlockClaim/scripts/main.js`
 
 **Interfaces:**
-- Consumes: None
-- Produces: A registered Minecraft Bedrock Behavior Pack header and script module configuration.
+- Produces: Base script execution environment.
 
-- [ ] **Step 1: Create the Behavior Pack manifest.json**
+- [ ] **Step 1: Create manifest.json**
 
-Create `behavior_packs/SolatAlerts/manifest.json` with the following content:
 ```json
 {
-    "format_version": 2,
-    "header": {
-        "name": "Solat Alerts",
-        "description": "Calculates and alerts real-world prayer times for Kuala Lumpur (UTC+8).",
-        "uuid": "8f3e2d6b-7c1a-4d9e-a8f2-1b3c4d5e6f7a",
-        "version": [1, 0, 0],
-        "min_engine_version": [ 1, 21, 20 ]
-    },
-    "modules": [
-        {
-            "type": "script",
-            "language": "javascript",
-            "uuid": "9f4e3d7c-8d2b-5e0f-b9a3-2c4d5e6f7a8b",
-            "entry": "scripts/index.js",
-            "version": [1, 0, 0]
-        }
-    ],
-    "capabilities": [ "script_eval" ],
-    "dependencies": [
-        {
-            "module_name": "@minecraft/server",
-            "version": "1.15.0"
-        }
-    ]
+  "format_version": 2,
+  "header": {
+    "name": "Block Claim System",
+    "description": "Claim blocks with a Golden Shovel",
+    "uuid": "45d17966-3d23-41bb-9ab6-2b449195b05a",
+    "version": [1, 0, 0],
+    "min_engine_version": [1, 20, 50]
+  },
+  "modules": [
+    {
+      "type": "script",
+      "language": "javascript",
+      "uuid": "3fc0c5e7-28d8-4f27-ba79-19ec6b1d4ef3",
+      "entry": "scripts/main.js",
+      "version": [1, 0, 0]
+    }
+  ],
+  "dependencies": [
+    {
+      "module_name": "@minecraft/server",
+      "version": "1.14.0"
+    }
+  ]
 }
 ```
 
-- [ ] **Step 2: Commit**
+- [ ] **Step 2: Create main.js**
 
-```bash
-git add behavior_packs/SolatAlerts/manifest.json
-git commit -m "feat: scaffold SolatAlerts behavior pack manifest"
+```javascript
+import { world, system } from "@minecraft/server";
+
+world.afterEvents.worldInitialize.subscribe((event) => {
+    // Initialize dynamic properties for claims and limits
+    const def = new DynamicPropertiesDefinition();
+    def.defineString("claims", 10000); // Store serialized JSON of claims
+    event.propertyRegistry.registerWorldDynamicProperties(def);
+});
+
+console.warn("[BlockClaim] Pack loaded.");
 ```
 
----
+- [ ] **Step 3: Commit**
+
+```bash
+git add development_behavior_packs/BlockClaim/manifest.json development_behavior_packs/BlockClaim/scripts/main.js
+git commit -m "feat: setup BlockClaim behavior pack"
+```

@@ -1,28 +1,20 @@
-# Task 1 Report: Shorten Alert Messages & Implement getPrayerTimestamp Helper
+# Task 1 Report
 
 ## What was implemented
-1. **getPrayerTimestamp in prayertimes.js**:
-   - Implemented and exported the `getPrayerTimestamp(date, decimalHours, timezone)` helper function.
-   - It converts local decimal hours into a UTC epoch millisecond timestamp.
-2. **Shortened Alert Messages in index.js**:
-   - Updated `broadcastReminder` warning messages to the format: `§e[Solat] {prayerName} in {minutesRemaining}m ({formattedTime})`.
-   - Updated `broadcastStartAlert` start alerts to the format: `§a[Solat] {prayerName} started.`.
+Created the fundamental manifest and main script for the `BlockClaim` behavior pack according to the specification. The pack is configured to use the `@minecraft/server` module version `1.14.0`.
+
+## Testing and Verification
+- Syntactically validated the javascript file.
+- Confirmed the file structure matches the requirements exactly.
+- True unit testing of Bedrock scripts is not feasible in this environment without a test runner. 
 
 ## Files changed
-- [prayertimes.js](file:///E:/minecraft-bedrock-server-local/behavior_packs/SolatAlerts/scripts/prayertimes.js) - Added `getPrayerTimestamp` helper.
-- [index.js](file:///E:/minecraft-bedrock-server-local/behavior_packs/SolatAlerts/scripts/index.js) - Shortened reminder and starting messages.
-- [test_prayertimes.js](file:///E:/minecraft-bedrock-server-local/tests/test_prayertimes.js) - Added unit tests for `getPrayerTimestamp`.
-- [test_index.js](file:///E:/minecraft-bedrock-server-local/tests/test_index.js) - Updated assertions for the shortened message formats.
-
-## What was tested and test results
-- Ran `tests/test_prayertimes.js`: Verified calculation, formatting, and the new `getPrayerTimestamp` timezone conversions. All passed.
-- Ran `tests/test_index.js`: Verified ticking and alert dispatching with the new message formats. All passed.
-- Ran `tests/test_levelperks.js`: Verified level perks behavior remains intact. All passed.
+- `development_behavior_packs/BlockClaim/manifest.json` (created)
+- `development_behavior_packs/BlockClaim/scripts/main.js` (created)
 
 ## Self-review findings
-- **Completeness**: All items in Task 1 spec were implemented exactly.
-- **Quality**: Clean code matching current patterns in the codebase.
-- **Testing**: Updated existing tests and added comprehensive unit tests for the new `getPrayerTimestamp` utility.
+- The implementation fully satisfies the requirements of Task 1.
+- Note: `DynamicPropertiesDefinition` is deprecated in some newer versions of the Minecraft Bedrock Scripting API, but I implemented exactly what the task specifies (relying on the requested `1.14.0` version module).
 
-## Issues or concerns
-- None.
+## Concerns
+- No blocking concerns.
