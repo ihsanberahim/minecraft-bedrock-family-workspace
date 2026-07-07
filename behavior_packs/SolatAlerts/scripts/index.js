@@ -91,6 +91,68 @@ system.runInterval(() => {
     checkPrayerTimes();
 }, 200);
 
+world.afterEvents.playerSpawn.subscribe(event => {
+    const player = event.player;
+    if (!event.initialSpawn) return; // Only trigger when first joining the server
 
+    try {
+        const now = new Date();
+        const dateStr = getLocalDateString(now, TIMEZONE);
+
+        // Get prayer times for today
+        const times = calculatePrayerTimes(now, LATITUDE, LONGITUDE, TIMEZONE);
+        const prayerList = [
+            { name: "Fajr", time: times.fajr },
+            { name: "Dhuhr", time: times.dhuhr },
+            { name: "Asr", time: times.asr },
+            { name: "Maghrib", time: times.maghrib },
+            { name: "Isha", time: times.isha }
+        ];
+
+        // Determine the latest prayer that started
+        let latestPrayer = null;
+        let latestStartTime = 0;
+
+        const currentMs = now.getTime();
+
+        for (const prayer of prayerList) {
+            const startTimeMs = getPrayerTimestamp(now, prayer.time, TIMEZONE);
+            if (startTimeMs && currentMs >= startTimeMs) {
+                if (startTimeMs > latestStartTime) {
+                    latestStartTime = startTimeMs;
+                    latestPrayer = prayer;
+                }
+            }
+        }
+
+        if (!latestPrayer) return;
+
+        // Check if current time is at least 10 minutes past the start time
+        const tenMinutesMs = 10 * 60 * 1000;
+        if (currentMs >= latestStartTime + tenMinutesMs) {
+            // Check if already rewarded for this prayer on this day
+            const expectedRewardKey = `${latestPrayer.name}-${dateStr}`;
+            const lastReward = player.getDynamicProperty('solat_last_reward');
+
+            if (lastReward !== expectedRewardKey) {
+                // Award 10 experience bottles
+                const inventory = player.getComponent('inventory');
+                if (inventory && inventory.container) {
+                    const item = new ItemStack('minecraft:experience_bottle', 10);
+                    const remaining = inventory.container.addItem(item);
+                    if (remaining) {
+                        player.dimension.spawnItem(remaining, player.location);
+                    }
+                    player.sendMessage(`§a+10 XP Bottles (prayer break).`);
+                    player.playSound('random.levelup', { volume: 0.5, pitch: 1.2 });
+                }
+                player.setDynamicProperty('solat_last_reward', expectedRewardKey);
+            }
+        }
+    } catch (e) {
+        console.error("Error in player join reward processing:", e);
+    }
+});
 
 console.warn("Solat Alerts Pack loaded successfully!");
+

@@ -208,8 +208,105 @@ async function runTests() {
         throw new Error(`Expected alert to fire again after memory cleanup, got ${mockState.messagesSent.length}`);
     }
 
+    // ----------------------------------------------------
+    // Test Case 7: Join-Based Reward System Tests
+    // ----------------------------------------------------
+    console.log("Test Case 7: Join-Based Reward System tests...");
+
+    if (typeof mockState.playerSpawnSubscribe !== 'function') {
+        throw new Error("Expected playerSpawn event listener to be registered, but it was not!");
+    }
+
+    const testSpawnPlayer = (playerName, mockTimeISO, initialSpawn, expectReward, expectedRewardKey, preSeedKey) => {
+        // Reset state
+        mockState.reset();
+        mockState.addedItems = [];
+        mockState.spawnedItems = [];
+        
+        const player = addMockPlayer(playerName);
+        if (preSeedKey) {
+            player.setDynamicProperty('solat_last_reward', preSeedKey);
+        }
+
+        setMockTime(mockTimeISO);
+
+        // Fire the playerSpawn callback
+        mockState.playerSpawnSubscribe({ player, initialSpawn });
+
+        if (expectReward) {
+            // Check if reward message was sent
+            const msg = mockState.messagesSent.find(m => m.player === playerName && m.message.includes("+10 XP Bottles"));
+            if (!msg) {
+                throw new Error(`Expected reward message for player ${playerName}, but none was sent`);
+            }
+
+            // Check if sound was played
+            const sound = mockState.soundsPlayed.find(s => s.player === playerName && s.soundId === 'random.levelup');
+            if (!sound || sound.options.pitch !== 1.2 || sound.options.volume !== 0.5) {
+                throw new Error(`Expected levelup sound with volume 0.5 and pitch 1.2, got: ${JSON.stringify(sound)}`);
+            }
+
+            // Check if items were added to inventory
+            const added = mockState.addedItems.find(item => item.player === playerName && item.itemStack.typeId === 'minecraft:experience_bottle');
+            if (!added || added.itemStack.amount !== 10) {
+                throw new Error(`Expected 10 experience bottles added to ${playerName}'s inventory, got: ${JSON.stringify(added)}`);
+            }
+
+            // Check if dynamic property was set
+            const dynamicProp = player.getDynamicProperty('solat_last_reward');
+            if (dynamicProp !== expectedRewardKey) {
+                throw new Error(`Expected dynamic property solat_last_reward to be "${expectedRewardKey}", got: "${dynamicProp}"`);
+            }
+        } else {
+            // No reward expected
+            const msg = mockState.messagesSent.find(m => m.player === playerName && m.message.includes("+10 XP Bottles"));
+            if (msg) {
+                throw new Error(`Unexpected reward message sent to player ${playerName}`);
+            }
+
+            const added = mockState.addedItems.find(item => item.player === playerName && item.itemStack.typeId === 'minecraft:experience_bottle');
+            if (added) {
+                throw new Error(`Unexpected experience bottles added to player ${playerName}`);
+            }
+
+            // If we didn't pre-seed it, it should remain unset or unchanged.
+            const dynamicProp = player.getDynamicProperty('solat_last_reward');
+            if (!preSeedKey && dynamicProp) {
+                throw new Error(`Unexpected dynamic property update for player ${playerName}: got "${dynamicProp}"`);
+            }
+        }
+    };
+
+    // Scenario A: First join (initialSpawn: true), but before Fajr (no prayer started today)
+    // Local time 2026-07-06 05:00:00 (UTC 2026-07-05 21:00:00)
+    console.log(" - Testing spawn before any prayer has started today...");
+    testSpawnPlayer("Steve", "2026-07-05T21:00:00Z", true, false, null, null);
+
+    // Scenario B: First join, 6 minutes after Asr start (Asr is 16:44)
+    // Local time 2026-07-06 16:50:00 (UTC 2026-07-06 08:50:00)
+    console.log(" - Testing spawn less than 10 minutes past prayer start...");
+    testSpawnPlayer("Steve", "2026-07-06T08:50:00Z", true, false, null, null);
+
+    // Scenario C: First join, 16 minutes after Asr start (Asr is 16:44) -> Eligible!
+    // Local time 2026-07-06 17:00:00 (UTC 2026-07-06 09:00:00)
+    console.log(" - Testing spawn 10+ minutes past prayer start (should reward)...");
+    testSpawnPlayer("Steve", "2026-07-06T09:00:00Z", true, true, "Asr-2026-07-06", null);
+
+    // Scenario D: Duplicate reward prevention
+    console.log(" - Testing duplicate reward prevention for same prayer and day...");
+    testSpawnPlayer("Steve", "2026-07-06T09:00:00Z", true, false, "Asr-2026-07-06", "Asr-2026-07-06");
+
+    // Scenario E: Non-initial spawn (initialSpawn: false) under eligible time
+    console.log(" - Testing spawn with initialSpawn=false (should not reward)...");
+    testSpawnPlayer("Steve", "2026-07-06T09:00:00Z", false, false, null, null);
+
+    // Scenario F: New prayer later in the day allows another reward
+    // Maghrib is 19:29. Local time 19:40:00 (UTC 11:40:00) -> 11 mins past Maghrib
+    console.log(" - Testing spawn late for a different prayer later in the day (should reward)...");
+    testSpawnPlayer("Steve", "2026-07-06T11:40:00Z", true, true, "Maghrib-2026-07-06", "Asr-2026-07-06");
+
     restoreDate();
-    console.log("PASS: All index.js alerts and ticking logic tests succeeded!");
+    console.log("PASS: All index.js alerts, ticking logic, and join reward tests succeeded!");
 }
 
 runTests().catch(err => {
