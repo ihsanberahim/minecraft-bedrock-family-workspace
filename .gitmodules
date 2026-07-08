@@ -1,0 +1,12 @@
+[submodule "behavior_packs/SolatAlerts"]
+	path = behavior_packs/SolatAlerts
+	url = git@github.com:ihsanberahim/minecraft-bedrock-SolatAlerts.git
+[submodule "behavior_packs/LevelPerks"]
+	path = behavior_packs/LevelPerks
+	url = git@github.com:ihsanberahim/minecraft-bedrock-LevelPerks.git
+[submodule "behavior_packs/SafeStorage"]
+	path = behavior_packs/SafeStorage
+	url = git@github.com:ihsanberahim/minecraft-bedrock-SafeStorage.git
+[submodule "development_behavior_packs/BlockClaim"]
+	path = development_behavior_packs/BlockClaim
+	url = git@github.com:ihsanberahim/minecraft-bedrock-BlockClaim.git
