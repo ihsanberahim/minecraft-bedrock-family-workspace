@@ -10,3 +10,6 @@
 [submodule "development_behavior_packs/BlockClaim"]
 	path = development_behavior_packs/BlockClaim
 	url = git@github.com:ihsanberahim/minecraft-bedrock-BlockClaim.git
+[submodule "behavior_packs/SimpleHomes"]
+	path = behavior_packs/SimpleHomes
+	url = git@github.com:ihsanberahim/minecraft-bedrock-SimpleHomes.git
