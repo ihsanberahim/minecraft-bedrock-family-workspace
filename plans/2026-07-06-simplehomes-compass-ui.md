@@ -1,0 +1,190 @@
+# Simple Homes Compass UI Implementation Plan
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+
+**Goal:** Create a GUI-based home management system triggered by right-clicking with a standard Compass, bypassing chat commands and cheat permissions.
+
+**Architecture:** Use `@minecraft/server-ui` forms (`ActionFormData` and `ModalFormData`) triggered by `world.afterEvents.itemUse` for players holding a compass. State is stored in the player's dynamic properties.
+
+**Tech Stack:** JavaScript, `@minecraft/server` (v1.15.0), `@minecraft/server-ui` (v1.3.0).
+
+## Global Constraints
+- Naming conventions: Use `homes_data` dynamic property namespace.
+- No Beta APIs required.
+- Do not crash if UI forms are closed/canceled.
+
+---
+
+### Task 1: Update SimpleHomes Script with UI Menus and Compass Listener
+
+**Files:**
+- Modify: `e:/minecraft-bedrock-server-local/behavior_packs/SimpleHomes/scripts/index.js`
+
+**Interfaces:**
+- Consumes: `@minecraft/server`, `@minecraft/server-ui`
+- Produces: None (self-contained UI handlers)
+
+- [ ] **Step 1: Replace index.js content with UI menus implementation**
+
+Modify `e:/minecraft-bedrock-server-local/behavior_packs/SimpleHomes/scripts/index.js` to implement the forms, button actions, and `world.afterEvents.itemUse` listener.
+
+```javascript
+import { system, world } from '@minecraft/server';
+import { ActionFormData, ModalFormData } from '@minecraft/server-ui';
+
+function getHomes(player) {
+    try {
+        const homesStr = player.getDynamicProperty("homes_data");
+        if (homesStr) {
+            return JSON.parse(homesStr);
+        }
+    } catch (e) {
+        console.warn("Failed to parse homes for player: " + player.name, e);
+    }
+    return {};
+}
+
+function saveHomes(player, homes) {
+    try {
+        player.setDynamicProperty("homes_data", JSON.stringify(homes));
+    } catch (e) {
+        console.error("Failed to save homes for player: " + player.name, e);
+    }
+}
+
+function showMainMenu(player) {
+    const form = new ActionFormData()
+        .title("Simple Homes Menu")
+        .body("Select an action:")
+        .button("🏠 Teleport to Home")
+        .button("📍 Set New Home")
+        .button("❌ Delete a Home");
+
+    form.show(player).then((response) => {
+        if (response.canceled) return;
+        
+        const selection = response.selection;
+        if (selection === 0) {
+            showTeleportMenu(player);
+        } else if (selection === 1) {
+            showSetHomeMenu(player);
+        } else if (selection === 2) {
+            showDeleteMenu(player);
+        }
+    }).catch((err) => {
+        console.error("Error showing main menu: ", err);
+    });
+}
+
+function showTeleportMenu(player) {
+    const homes = getHomes(player);
+    const homeNames = Object.keys(homes);
+
+    if (homeNames.length === 0) {
+        player.sendMessage("§eYou don't have any saved homes yet. Use the compass to set one!");
+        return;
+    }
+
+    const form = new ActionFormData()
+        .title("Teleport to Home")
+        .body("Choose a home to teleport to:");
+
+    for (const name of homeNames) {
+        const h = homes[name];
+        const dimFriendly = h.dimension.replace('minecraft:', '');
+        form.button(`🏠 ${name}\n(${dimFriendly})`);
+    }
+
+    form.show(player).then((response) => {
+        if (response.canceled) return;
+
+        const homeName = homeNames[response.selection];
+        const targetHome = homes[homeName];
+
+        if (targetHome) {
+            player.teleport(
+                { x: targetHome.x, y: targetHome.y, z: targetHome.z },
+                { dimension: world.getDimension(targetHome.dimension) }
+            );
+            player.sendMessage(`§aTeleported to home "§e${homeName}§a"!`);
+        }
+    }).catch((err) => {
+        console.error("Error showing teleport menu: ", err);
+    });
+}
+
+function showSetHomeMenu(player) {
+    const form = new ModalFormData()
+        .title("Set New Home")
+        .textField("Enter a name for this home location:", "e.g., base, cave, castle", "home");
+
+    form.show(player).then((response) => {
+        if (response.canceled) return;
+
+        const homeName = response.formValues[0].trim() || 'home';
+        const location = player.location;
+        const dimension = player.dimension.id;
+        const homes = getHomes(player);
+
+        homes[homeName] = {
+            x: Math.round(location.x * 100) / 100,
+            y: Math.round(location.y * 100) / 100,
+            z: Math.round(location.z * 100) / 100,
+            dimension: dimension
+        };
+
+        saveHomes(player, homes);
+        player.sendMessage(`§aSuccess: Home "§e${homeName}§a" has been set at current position!`);
+    }).catch((err) => {
+        console.error("Error showing set home menu: ", err);
+    });
+}
+
+function showDeleteMenu(player) {
+    const homes = getHomes(player);
+    const homeNames = Object.keys(homes);
+
+    if (homeNames.length === 0) {
+        player.sendMessage("§eYou don't have any saved homes yet.");
+        return;
+    }
+
+    const form = new ActionFormData()
+        .title("Delete a Home")
+        .body("Select a home to delete:");
+
+    for (const name of homeNames) {
+        form.button(`❌ ${name}`);
+    }
+
+    form.show(player).then((response) => {
+        if (response.canceled) return;
+
+        const homeName = homeNames[response.selection];
+        delete homes[homeName];
+        saveHomes(player, homes);
+        player.sendMessage(`§aSuccess: Home "§e${homeName}§a" has been deleted!`);
+    }).catch((err) => {
+        console.error("Error showing delete menu: ", err);
+    });
+}
+
+// Listen for itemUse events to trigger the UI menu
+world.afterEvents.itemUse.subscribe((eventData) => {
+    const { source: player, itemStack } = eventData;
+
+    if (itemStack && itemStack.typeId === "minecraft:compass") {
+        system.run(() => {
+            showMainMenu(player);
+        });
+    }
+});
+```
+
+- [ ] **Step 2: Save the file and confirm formatting**
+
+- [ ] **Step 3: Update world behavior packs definition if needed**
+
+Make sure `world_behavior_packs.json` still registers the package.
+
+---

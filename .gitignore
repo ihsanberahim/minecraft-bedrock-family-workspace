@@ -1,0 +1,27 @@
+# Ignore server binaries and logs
+bedrock_server.exe
+*.log
+logs/
+packet-statistics.txt
+profanity_filter.wlist
+bedrock_server_how_to.html
+allowlist.json
+permissions.json
+packetlimitconfig.json
+release-notes.txt
+run-server.ps1
+
+# Ignore default behavior packs
+behavior_packs/chemistry*/
+behavior_packs/editor/
+behavior_packs/experimental*/
+behavior_packs/server_*/
+behavior_packs/mq_*/
+behavior_packs/vanilla*/
+
+# Ignore worlds data
+worlds/
+!worlds/**/world_behavior_packs.json
+
+# Ignore superpowers SDD directory
+.superpowers/sdd/
